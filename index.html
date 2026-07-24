@@ -3,50 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مراقب الصلاة الذكي</title>
+    <title>نظام المتابعة الذكي Pro</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
-    <link rel="manifest" href="manifest.json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary-color: #1a535c; --bg-color: #f7fff7; }
-        body { background-color: var(--bg-color ); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .container { max-width: 1100px; margin-top: 20px; padding-bottom: 50px; }
-        .card { border-radius: 15px; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .nav-link { cursor: pointer; font-weight: bold; color: var(--primary-color); padding: 10px 20px; }
-        .nav-pills .nav-link.active { background-color: var(--primary-color) !important; color: white !important; }
-        .room-card { cursor: pointer; background: white; text-align: center; padding: 20px; border-radius: 15px; border: 1px solid #eee; transition: 0.3s; }
-        .room-card:hover { transform: translateY(-3px); box-shadow: 0 5px 10px rgba(0,0,0,0.1); }
-        .bg-prayer { background: linear-gradient(135deg, #1a535c, #4ecdc4); color: white; border-radius: 15px; }
+        :root { --primary: #1a535c; --bg: #f7fff7; --card-bg: #ffffff; --text: #333333; }
+        body.dark-mode { --primary: #4ecdc4; --bg: #1a1a1a; --card-bg: #2d2d2d; --text: #f0f0f0; }
+        
+        body { background-color: var(--bg ); color: var(--text); font-family: 'Segoe UI', Tahoma, sans-serif; transition: 0.3s; }
+        .container { max-width: 900px; margin-top: 20px; padding-bottom: 50px; }
+        .card { background-color: var(--card-bg); color: var(--text); border-radius: 15px; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .nav-link { cursor: pointer; font-weight: bold; color: var(--primary); }
+        .nav-pills .nav-link.active { background-color: var(--primary) !important; color: white !important; }
+        .room-card { cursor: pointer; background: var(--card-bg); text-align: center; padding: 20px; border-radius: 15px; border: 1px solid #44444433; }
+        .bg-header { background: linear-gradient(135deg, #1a535c, #4ecdc4); color: white; border-radius: 15px; }
+        .student-done { background-color: #19875444 !important; }
         .d-none { display: none !important; }
+        #loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:9999; }
+        .form-control, .form-select { background-color: var(--card-bg); color: var(--text); border-color: #44444433; }
+        .form-control:focus, .form-select:focus { background-color: var(--card-bg); color: var(--text); }
     </style>
 </head>
 <body>
 
+<div id="loading-overlay"><h3>جاري تشغيل النظام المطور...</h3></div>
+
 <div class="container">
-    <div class="text-center mb-4">
-        <h2 class="fw-bold" style="color: var(--primary-color);">🕌 مراقب الصلاة الذكي</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold m-0" style="color: var(--primary);">🕌 نظام المتابعة Pro</h2>
+        <button class="btn btn-outline-secondary btn-sm rounded-pill" onclick="toggleDarkMode()">🌙 الوضع الليلي</button>
     </div>
     
-    <ul class="nav nav-pills mb-4 justify-content-center" id="main-nav">
-        <li class="nav-item"><a class="nav-link active" onclick="showTab('rooms', this)">🏠 الجولات</a></li>
-        <li class="nav-item"><a class="nav-link" onclick="showTab('reports', this)">📊 التقارير</a></li>
-        <li class="nav-item"><a class="nav-link" onclick="showTab('manage', this)">⚙️ الإدارة</a></li>
+    <ul class="nav nav-pills mb-4 justify-content-center">
+        <li class="nav-item"><a class="nav-link active" id="btn-rooms" onclick="switchTab('rooms')">🏠 الجولات</a></li>
+        <li class="nav-item"><a class="nav-link" id="btn-khawatir" onclick="switchTab('khawatir')">🎤 الخواطر</a></li>
+        <li class="nav-item"><a class="nav-link" id="btn-reports" onclick="switchTab('reports')">📊 التقارير</a></li>
+        <li class="nav-item"><a class="nav-link" id="btn-manage" onclick="switchTab('manage')">⚙️ الإدارة</a></li>
     </ul>
 
     <!-- قسم الجولات -->
-    <div id="tab-rooms" class="tab-content-item">
-        <div class="card p-4 mb-4 bg-prayer">
-            <div class="row align-items-center">
-                <div class="col-8"><h5>تحديد وقت الصلاة</h5></div>
-                <div class="col-4"><select id="prayerSelect" class="form-select"></select></div>
+    <div id="view-rooms" class="content-view">
+        <div class="card p-4 mb-4 bg-header">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-4"><h5>تحديد وقت الصلاة</h5></div>
+                <div class="col-md-4"><select id="prayerSelect" class="form-select"></select></div>
+                <div class="col-md-4"><input type="text" id="roomSearch" class="form-control" placeholder="🔍 بحث سريع عن غرفة..." onkeyup="filterRooms()"></div>
             </div>
         </div>
-        <div id="roomsContainer" class="row g-3"></div>
-        <div id="attendanceArea" class="mt-4 d-none">
+        <div id="roomsGrid" class="row g-3"></div>
+        <div id="attendanceDetail" class="mt-4 d-none">
             <div class="card p-4">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 id="currentRoomTitle" class="fw-bold m-0"></h4>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="backToRooms()">⬅️ عودة</button>
+                <div class="d-flex justify-content-between mb-3">
+                    <h5 id="roomTitle" class="fw-bold"></h5>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="closeSubView('rooms')">إغلاق</button>
                 </div>
                 <div class="table-responsive">
                     <table class="table align-middle">
@@ -54,65 +64,71 @@
                         <tbody id="attendanceList"></tbody>
                     </table>
                 </div>
-                <button class="btn btn-primary w-100 py-3 mt-3" onclick="exportDailyReport()">💾 حفظ التعديلات فقط</button>
+                <button class="btn btn-primary w-100 py-3 mt-3" onclick="savePrayerAttendance()">💾 حفظ التعديلات</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- قسم الخواطر -->
+    <div id="view-khawatir" class="content-view d-none">
+        <div id="khawatirRoomsGrid" class="row g-3"></div>
+        <div id="khawatirDetail" class="mt-4 d-none">
+            <div class="card p-4">
+                <div class="d-flex justify-content-between mb-3">
+                    <h5 id="khawatirRoomTitle" class="fw-bold"></h5>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="closeSubView('khawatir')">إغلاق</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead><tr><th>الطالب</th><th>التكليف</th><th>الحالة</th><th>إجراء</th></tr></thead>
+                        <tbody id="khawatirList"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- قسم التقارير -->
-    <div id="tab-reports" class="tab-content-item d-none">
+    <div id="view-reports" class="content-view d-none">
+        <div class="card p-4 mb-4">
+            <h6 class="fw-bold mb-3">📈 إحصائيات سريعة</h6>
+            <canvas id="statsChart" style="max-height: 250px;"></canvas>
+        </div>
         <div class="card p-4">
-            <h5 class="fw-bold mb-4">📊 مركز التقارير</h5>
-            <div class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label class="small fw-bold">النطاق:</label>
-                    <select id="reportTarget" class="form-select" onchange="toggleReportUI()">
-                        <option value="all">الجميع</option>
-                        <option value="specific">طالب محدد</option>
-                    </select>
-                </div>
-                <div class="col-md-3 d-none" id="studentSearchCol">
-                    <input type="text" id="searchStudentName" class="form-control" placeholder="اسم الطالب...">
-                </div>
-                <div class="col-md-3">
-                    <label class="small fw-bold">الفترة:</label>
-                    <select id="filterPeriod" class="form-select" onchange="toggleReportUI()">
-                        <option value="today">اليوم</option>
-                        <option value="week">الأسبوع</option>
-                        <option value="month">الشهر</option>
-                        <option value="custom">تاريخ مخصص</option>
-                    </select>
-                </div>
-                <div class="col-md-3 d-none" id="customDateCol">
-                    <input type="date" id="customDate" class="form-control">
-                </div>
-                <div class="col-md-3">
-                    <button class="btn btn-info w-100 text-white fw-bold" onclick="generateReport()">🚀 عرض التقرير</button>
-                </div>
+            <div class="row g-2 mb-3">
+                <div class="col-6"><select id="repTarget" class="form-select" onchange="toggleRepName()"><option value="all">الكل</option><option value="one">طالب</option></select></div>
+                <div class="col-6"><select id="repPeriod" class="form-select"><option value="today">اليوم</option><option value="week">أسبوع</option></select></div>
+                <div id="repNameDiv" class="col-12 d-none"><input type="text" id="repName" class="form-control" placeholder="اسم الطالب..."></div>
             </div>
-            <div id="reportResultArea" class="mt-5 d-none">
-                <button class="btn btn-dark btn-sm mb-3" onclick="copyFullReport()">📋 نسخ للواتساب</button>
-                <div id="reportTableContainer"></div>
+            <button class="btn btn-info w-100 text-white fw-bold" onclick="generateFullReport()">🚀 عرض التقرير</button>
+            <div id="repArea" class="mt-4 d-none">
+                <button class="btn btn-dark btn-sm mb-3" onclick="copyToClipboard()">📋 نسخ للواتساب</button>
+                <div id="repTable"></div>
             </div>
         </div>
     </div>
 
     <!-- قسم الإدارة -->
-    <div id="tab-manage" class="tab-content-item d-none">
-        <div class="card p-4 mb-4">
-            <h5>➕ إضافة طالب جديد</h5>
-            <div class="row g-2">
-                <div class="col-md-5"><input type="text" id="studentName" class="form-control" placeholder="الاسم"></div>
-                <div class="col-md-4"><input type="text" id="roomNumber" class="form-control" placeholder="الغرفة"></div>
-                <div class="col-md-3"><button class="btn btn-success w-100" onclick="addStudent()">إضافة</button></div>
+    <div id="view-manage" class="content-view d-none">
+        <div class="card p-4 mb-3">
+            <h6 class="fw-bold mb-3">💾 النسخ الاحتياطي والأمان</h6>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary flex-grow-1" onclick="exportBackup()">📥 تصدير البيانات</button>
+                <button class="btn btn-outline-warning flex-grow-1" onclick="document.getElementById('importFile').click()">📤 استيراد البيانات</button>
+                <input type="file" id="importFile" class="d-none" onchange="importBackup(this)">
             </div>
         </div>
-        <div class="card p-4 border-danger mb-4">
-            <button class="btn btn-outline-danger btn-sm" onclick="clearAllAttendance()">🗑️ مسح جميع التقارير</button>
+        <div class="card p-4 mb-3">
+            <h6>➕ إضافة طالب</h6>
+            <div class="row g-2">
+                <div class="col-7"><input type="text" id="mName" class="form-control" placeholder="الاسم"></div>
+                <div class="col-5"><input type="text" id="mRoom" class="form-control" placeholder="الغرفة"></div>
+                <button class="btn btn-success w-100 mt-2" onclick="addNewStudent()">إضافة</button>
+            </div>
         </div>
         <div class="card p-4">
-            <input type="text" id="manageSearch" class="form-control mb-3" placeholder="بحث..." onkeyup="displayAllStudents()">
-            <div class="table-responsive"><table class="table table-hover"><tbody id="allStudentsList"></tbody></table></div>
+            <input type="text" id="mSearch" class="form-control mb-3" placeholder="بحث..." onkeyup="renderManageList()">
+            <div id="mList"></div>
         </div>
     </div>
 </div>
