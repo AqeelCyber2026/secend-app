@@ -289,8 +289,33 @@ function renderManageList() {
 }
 
 function delStudent(id) {
-    if(confirm("حذف؟")) { db.run("DELETE FROM attendance WHERE s_id = ?; DELETE FROM khawatir WHERE s_id = ?; DELETE FROM students WHERE id = ?;", [id, id, id]); save(); renderManageList(); }
+    if(confirm("هل أنت متأكد من حذف الطالب وجميع سجلات صلواته وخواطره نهائياً؟")) { 
+        try {
+            // 1. حذف سجلات الحضور
+            db.run("DELETE FROM attendance WHERE s_id = ?", [id]); 
+            
+            // 2. حذف سجلات الخواطر (تم تصحيح اسم العمود هنا إلى s_id)
+            db.run("DELETE FROM khawatir WHERE s_id = ?", [id]); 
+            
+            // 3. حذف الطالب نفسه
+            db.run("DELETE FROM students WHERE id = ?", [id]); 
+            
+            // 4. حفظ التغييرات
+            save(); 
+            
+            // 5. تحديث كل القوائم فوراً لضمان اختفاء الطالب من كل مكان
+            renderManageList(); 
+            renderRooms();
+            renderKhawatirRooms();
+            
+            alert("تم حذف الطالب وجميع بياناته بنجاح");
+        } catch (e) {
+            console.error("خطأ أثناء الحذف:", e);
+            alert("حدث خطأ أثناء محاولة الحذف");
+        }
+    }
 }
+
 
 function setPrayer() {
     const h = new Date().getHours();
