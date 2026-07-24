@@ -1,0 +1,16 @@
+{
+  "name": "نظام حضور الطلاب",
+  "short_name": "الحضور",
+  "description": "تطبيق محلي لإدارة حضور وغياب الطلاب",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f4f7f6",
+  "theme_color": "#0d6efd",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3589/3589030.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

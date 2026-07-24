@@ -4,19 +4,14 @@ let statsChart = null;
 const config = { locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${f}` };
 
 // 1. تشغيل قاعدة البيانات
-window.onload = async ( ) => {
+window.onload = async () => {
+    // إخفاء شاشة التحميل فوراً إذا كانت قاعدة البيانات محملة مسبقاً
+    if (localStorage.getItem("prayer_db_pro_v7")) {
+        document.getElementById("loading-overlay").style.opacity = "0.5";
+    }
+    
     try {
         const SQL = await initSqlJs(config);
-        const saved = localStorage.getItem("prayer_db_pro_v7");
-        if (saved) {
-            db = new SQL.Database(new Uint8Array(JSON.parse(saved)));
-        } else {
-            db = new SQL.Database();
-            db.run("CREATE TABLE students (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, room TEXT)");
-            db.run("CREATE TABLE attendance (id INTEGER PRIMARY KEY AUTOINCREMENT, s_id INTEGER, status TEXT, notes TEXT, prayer TEXT, date TEXT)");
-            db.run("CREATE TABLE khawatir (id INTEGER PRIMARY KEY AUTOINCREMENT, s_id INTEGER, prayer TEXT, k_date TEXT, status TEXT)");
-            save();
-        }
         document.getElementById("loading-overlay").style.display = "none";
         if(localStorage.getItem("dark-mode") === "true") document.body.classList.add("dark-mode");
         setPrayer();
