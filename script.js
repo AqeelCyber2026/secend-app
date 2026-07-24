@@ -3,15 +3,20 @@ let tempChanges = {};
 let statsChart = null;
 const config = { locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${f}` };
 
-// 1. تشغيل قاعدة البيانات
-window.onload = async () => {
-    // إخفاء شاشة التحميل فوراً إذا كانت قاعدة البيانات محملة مسبقاً
-    if (localStorage.getItem("prayer_db_pro_v7")) {
-        document.getElementById("loading-overlay").style.opacity = "0.5";
-    }
-    
+// 1. تشغيل النظام
+window.onload = async ( ) => {
     try {
         const SQL = await initSqlJs(config);
+        const saved = localStorage.getItem("prayer_pro_v8");
+        if (saved) {
+            db = new SQL.Database(new Uint8Array(JSON.parse(saved)));
+        } else {
+            db = new SQL.Database();
+            db.run("CREATE TABLE students (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, room TEXT)");
+            db.run("CREATE TABLE attendance (id INTEGER PRIMARY KEY AUTOINCREMENT, s_id INTEGER, status TEXT, notes TEXT, prayer TEXT, date TEXT)");
+            db.run("CREATE TABLE khawatir (id INTEGER PRIMARY KEY AUTOINCREMENT, s_id INTEGER, prayer TEXT, k_date TEXT, status TEXT)");
+            save();
+        }
         document.getElementById("loading-overlay").style.display = "none";
         if(localStorage.getItem("dark-mode") === "true") document.body.classList.add("dark-mode");
         setPrayer();
@@ -21,80 +26,10 @@ window.onload = async () => {
 
 function save() {
     const data = db.export();
-    localStorage.setItem("prayer_db_pro_v7", JSON.stringify(Array.from(data)));
+    localStorage.setItem("prayer_pro_v8", JSON.stringify(Array.from(data)));
 }
 
-// --- ميزات التحسين الجديدة ---
-
-// 1. الوضع الليلي
-function toggleDarkMode() {
-    const isDark = document.body.classList.toggle("dark-mode");
-    localStorage.setItem("dark-mode", isDark);
-}
-
-// 2. النسخ الاحتياطي (تصدير)
-function exportBackup() {
-    const data = db.export();
-    const blob = new Blob([data], { type: "application/octet-stream" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `backup_prayer_${new Date().toISOString().split('T')[0]}.db`;
-    a.click();
-}
-
-// 3. استيراد البيانات
-async function importBackup(input) {
-    if (!input.files[0]) return;
-    const reader = new FileReader();
-    reader.onload = async function() {
-        const SQL = await initSqlJs(config);
-        db = new SQL.Database(new Uint8Array(reader.result));
-        save();
-        alert("تم استيراد البيانات بنجاح! سيتم تحديث الصفحة.");
-        location.reload();
-    };
-    reader.readAsArrayBuffer(input.files[0]);
-}
-
-// 4. الفلترة الذكية للغرف
-function filterRooms() {
-    const q = document.getElementById("roomSearch").value.toLowerCase();
-    document.querySelectorAll("#roomsGrid .col-6").forEach(el => {
-        const text = el.innerText.toLowerCase();
-        el.style.display = text.includes(q) ? "" : "none";
-    });
-}
-
-// 5. الرسوم البيانية (الإحصائيات)
-function updateStatsChart() {
-    const ctx = document.getElementById('statsChart').getContext('2d');
-    const res = db.exec("SELECT status, COUNT(*) FROM attendance GROUP BY status");
-    
-    let labels = [], data = [];
-    if (res.length > 0) {
-        res[0].values.forEach(r => {
-            if(r[0]) { labels.push(r[0]); data.push(r[1]); }
-        });
-    }
-
-    if (statsChart) statsChart.destroy();
-    statsChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'عدد السجلات',
-                data: data,
-                backgroundColor: ['#198754', '#ffc107', '#dc3545', '#6c757d']
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-    });
-}
-
-// --- الدوال الأساسية (بدون تغيير لضمان الاستقرار) ---
-
+// 2. التنقل والواجهة
 function switchTab(name) {
     document.querySelectorAll('.content-view').forEach(v => v.classList.add('d-none'));
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
@@ -117,16 +52,62 @@ function closeSubView(type) {
     }
 }
 
+function toggleDarkMode() {
+    const isDark = document.body.classList.toggle("dark-mode");
+    localStorage.setItem("dark-mode", isDark);
+}
+
+// 3. إدارة الطلاب
+function addNewStudent() {
+    const n = document.getElementById("mName").value.trim();
+    const r = document.getElementById("mRoom").value.trim();
+    if(!n || !r) return alert("أكمل البيانات");
+    db.run("INSERT INTO students (name, room) VALUES (?, ?)", [n, r]);
+    save(); document.getElementById("mName").value = ""; alert("تمت الإضافة"); renderManageList();
+}
+
+function renderManageList() {
+    const list = document.getElementById("mList"); list.innerHTML = "";
+    const q = document.getElementById("mSearch").value.toLowerCase();
+    const res = db.exec("SELECT id, name, room FROM students ORDER BY room, name");
+    if (res.length > 0) {
+        let h = '<table class="table table-sm"><tbody>';
+        res[0].values.forEach(r => {
+            if(r[1].toLowerCase().includes(q) || r[2].toLowerCase().includes(q)) {
+                h += `<tr><td><b>${r[1]}</b></td><td>غرفة ${r[2]}</td><td class="text-end"><button class="btn btn-sm btn-outline-danger border-0" onclick="delStudent(${r[0]})">حذف</button></td></tr>`;
+            }
+        });
+        h += '</tbody></table>'; list.innerHTML = h;
+    }
+}
+
+function delStudent(id) {
+    if(confirm("هل تريد حذف الطالب وجميع سجلاته نهائياً؟")) {
+        db.run("DELETE FROM attendance WHERE s_id = ?", [id]);
+        db.run("DELETE FROM khawatir WHERE s_id = ?", [id]);
+        db.run("DELETE FROM students WHERE id = ?", [id]);
+        save(); renderManageList();
+    }
+}
+
+// 4. جولات الصلوات
 function renderRooms() {
     const grid = document.getElementById("roomsGrid"); grid.innerHTML = "";
     const res = db.exec("SELECT DISTINCT room FROM students ORDER BY room");
     if (res.length > 0) {
         res[0].values.forEach(r => {
             const div = document.createElement("div"); div.className = "col-6 col-md-3";
-            div.innerHTML = `<div class="room-card" onclick="openRoom('${r[0]}')"><b>غرفة ${r[0]}</b></div>`;
+            div.innerHTML = `<div class="room-card shadow-sm" onclick="openRoom('${r[0]}')"><b>غرفة ${r[0]}</b></div>`;
             grid.appendChild(div);
         });
     }
+}
+
+function filterRooms() {
+    const q = document.getElementById("roomSearch").value.toLowerCase();
+    document.querySelectorAll("#roomsGrid .col-6").forEach(el => {
+        el.style.display = el.innerText.toLowerCase().includes(q) ? "" : "none";
+    });
 }
 
 function openRoom(num) {
@@ -139,7 +120,7 @@ function openRoom(num) {
     if (res.length > 0) {
         res[0].values.forEach(row => {
             const tr = document.createElement("tr");
-            tr.innerHTML = `<td>${row[1]}</td><td><select class="form-select form-select-sm" onchange="trackChange(${row[0]}, 'status', this.value, this)"><option value="">---</option><option value="صلى">✅ صلى</option><option value="متأخر">🟡 متأخر</option><option value="نائم">🔴 نائم</option><option value="بعذر">⚪ بعذر</option></select></td><td><input type="text" class="form-control form-control-sm" placeholder="..." onchange="trackChange(${row[0]}, 'notes', this.value)"></td>`;
+            tr.innerHTML = `<td>${row[1]}</td><td><select class="form-select form-select-sm" onchange="trackChange(${row[0]}, 'status', this.value, this)"><option value="">---</option><option value="صلى">✅ صلى</option><option value="متأخر">🟡 متأخر</option><option value="نائم">🔴 نائم</option><option value="بعذر">⚪ بعذر</option></select></td><td><input type="text" class="form-control form-control-sm border-0 bg-light" placeholder="..." onchange="trackChange(${row[0]}, 'notes', this.value)"></td>`;
             list.appendChild(tr);
         });
     }
@@ -149,7 +130,7 @@ function trackChange(id, field, val, el) {
     if(!tempChanges[id]) tempChanges[id] = { status: "", notes: "", date: new Date().toISOString().split('T')[0] };
     tempChanges[id][field] = val;
     if(field === 'status' && el) {
-        const colors = {"صلى":"#19875444", "متأخر":"#ffc10744", "نائم":"#dc354544", "بعذر":"#6c757d44", "":"transparent"};
+        const colors = {"صلى":"#19875422", "متأخر":"#ffc10722", "نائم":"#dc354522", "بعذر":"#6c757d22", "":"transparent"};
         el.closest('tr').style.backgroundColor = colors[val];
     }
 }
@@ -165,13 +146,14 @@ function savePrayerAttendance() {
     save(); alert("تم الحفظ"); closeSubView('rooms');
 }
 
+// 5. الخواطر
 function renderKhawatirRooms() {
     const grid = document.getElementById("khawatirRoomsGrid"); grid.innerHTML = "";
     const res = db.exec("SELECT DISTINCT room FROM students ORDER BY room");
     if (res.length > 0) {
         res[0].values.forEach(r => {
             const div = document.createElement("div"); div.className = "col-6 col-md-3";
-            div.innerHTML = `<div class="room-card" style="border-left: 4px solid #6a11cb" onclick="openKhawatirRoom('${r[0]}')"><b>غرفة ${r[0]}</b></div>`;
+            div.innerHTML = `<div class="room-card shadow-sm" style="border-left: 4px solid #6a11cb" onclick="openKhawatirRoom('${r[0]}')"><b>غرفة ${r[0]}</b></div>`;
             grid.appendChild(div);
         });
     }
@@ -192,36 +174,15 @@ function renderKhawatirList(num) {
             const tr = document.createElement("tr");
             if(row[4] === 'تم الأداء') tr.className = 'student-done';
             tr.innerHTML = `
-                <td>${row[1]}</td>
-                <td>
-                    ${!row[5] ? `
-                        <select id="kp-${row[0]}" class="form-select form-select-sm mb-1">
-                            <option value="الفجر">الفجر</option>
-                            <option value="الظهر">الظهر</option>
-                            <option value="العصر">العصر</option>
-                            <option value="المغرب">المغرب</option>
-                            <option value="العشاء">العشاء</option>
-                        </select>
-                        <input type="date" id="kd-${row[0]}" class="form-control form-control-sm">
-                    ` : `<span>${row[2]} | ${row[3]}</span>`}
-                </td>
+                <td class="small fw-bold">${row[1]}</td>
+                <td>${!row[5] ? `<select id="kp-${row[0]}" class="form-select form-select-sm mb-1"><option value="الفجر">الفجر</option><option value="الظهر">الظهر</option><option value="العصر">العصر</option><option value="المغرب">المغرب</option><option value="العشاء">العشاء</option></select><input type="date" id="kd-${row[0]}" class="form-control form-control-sm">` : `<span class="small">${row[2]} | ${row[3]}</span>`}</td>
                 <td><span class="badge ${row[4] === 'تم الأداء' ? 'bg-success' : 'bg-warning text-dark'}">${row[4] || 'لم يكلف'}</span></td>
-                <td>
-                    ${!row[5] ? `
-                        <button class="btn btn-sm btn-primary w-100" onclick="assignK(${row[0]}, '${num}')">تكليف</button>
-                    ` : `
-                        <div class="btn-group">
-                            <button class="btn btn-sm btn-success" onclick="updateK(${row[5]}, 'تم الأداء', '${num}')">تم</button>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="updateK(${row[5]}, 'مفعل', '${num}')">تفعيل</button>
-                        </div>
-                    `}
-                </td>
+                <td>${!row[5] ? `<button class="btn btn-sm btn-primary w-100" onclick="assignK(${row[0]}, '${num}')">تكليف</button>` : `<div class="btn-group"><button class="btn btn-sm btn-success" onclick="updateK(${row[5]}, 'تم الأداء', '${num}')">تم</button><button class="btn btn-sm btn-outline-secondary" onclick="updateK(${row[5]}, 'مفعل', '${num}')">تفعيل</button></div>`}</td>
             `;
             list.appendChild(tr);
         });
     }
 }
-
 
 function assignK(sid, num) {
     const p = document.getElementById(`kp-${sid}`).value;
@@ -236,6 +197,7 @@ function updateK(kid, status, num) {
     save(); renderKhawatirList(num);
 }
 
+// 6. التقارير والإحصائيات
 function toggleRepName() { document.getElementById('repNameDiv').classList.toggle('d-none', document.getElementById('repTarget').value !== 'one'); }
 
 function generateFullReport() {
@@ -253,69 +215,53 @@ function generateFullReport() {
         let h = '<table class="table table-sm border small"><thead><tr><th>التاريخ</th><th>الصلاة</th><th>الغرفة</th><th>الاسم</th><th>الحالة</th><th>ملاحظة</th></tr></thead><tbody>';
         res[0].values.forEach(r => { h += `<tr><td>${r[5]}</td><td>${r[4]}</td><td>${r[1]}</td><td>${r[0]}</td><td>${r[2]}</td><td>${r[3]||'-'}</td></tr>`; });
         h += '</tbody></table>'; cont.innerHTML = h;
-    } else { cont.innerHTML = "<p class='text-center'>لا توجد بيانات</p>"; }
+    } else { cont.innerHTML = "<p class='text-center'>لا توجد سجلات</p>"; }
+}
+
+function updateStatsChart() {
+    const ctx = document.getElementById('statsChart').getContext('2d');
+    const res = db.exec("SELECT status, COUNT(*) FROM attendance GROUP BY status");
+    let labels = [], data = [];
+    if (res.length > 0) { res[0].values.forEach(r => { if(r[0]) { labels.push(r[0]); data.push(r[1]); } }); }
+    if (statsChart) statsChart.destroy();
+    statsChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: labels, datasets: [{ data: data, backgroundColor: ['#198754', '#ffc107', '#dc3545', '#6c757d'] }] },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
 }
 
 function copyToClipboard() {
-    let t = "📋 تقرير متابعة\n";
+    let t = "📋 تقرير المتابعة\n";
     document.querySelectorAll("#repTable tbody tr").forEach(r => {
         const c = r.querySelectorAll("td");
         t += `🚪 ${c[2].innerText} | 👤 ${c[3].innerText} | 📍 ${c[4].innerText} | 📝 ${c[5].innerText}\n`;
     });
-    navigator.clipboard.writeText(t).then(() => alert("تم النسخ"));
+    navigator.clipboard.writeText(t).then(() => alert("تم النسخ بنجاح"));
 }
 
-function addNewStudent() {
-    const n = document.getElementById("mName").value.trim();
-    const r = document.getElementById("mRoom").value.trim();
-    if(!n || !r) return alert("أكمل البيانات");
-    db.run("INSERT INTO students (name, room) VALUES (?, ?)", [n, r]);
-    save(); document.getElementById("mName").value = ""; alert("تمت الإضافة"); renderManageList();
+// 7. النسخ الاحتياطي
+function exportBackup() {
+    const data = db.export();
+    const blob = new Blob([data], { type: "application/octet-stream" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `backup_prayer_${new Date().toISOString().split('T')[0]}.db`;
+    a.click();
 }
 
-function renderManageList() {
-    const list = document.getElementById("mList"); list.innerHTML = "";
-    const q = document.getElementById("mSearch").value.toLowerCase();
-    const res = db.exec("SELECT id, name, room FROM students ORDER BY room, name");
-    if (res.length > 0) {
-        let h = '<table class="table table-sm"><tbody>';
-        res[0].values.forEach(r => {
-            if(r[1].toLowerCase().includes(q) || r[2].toLowerCase().includes(q)) {
-                h += `<tr><td><b>${r[1]}</b></td><td>غرفة ${r[2]}</td><td class="text-end"><button class="btn btn-sm btn-outline-danger" onclick="delStudent(${r[0]})">حذف</button></td></tr>`;
-            }
-        });
-        h += '</tbody></table>'; list.innerHTML = h;
-    }
+async function importBackup(input) {
+    if (!input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = async function() {
+        const SQL = await initSqlJs(config);
+        db = new SQL.Database(new Uint8Array(reader.result));
+        save();
+        alert("تم الاستيراد بنجاح! سيتم تحديث الصفحة.");
+        location.reload();
+    };
+    reader.readAsArrayBuffer(input.files[0]);
 }
-
-function delStudent(id) {
-    if(confirm("هل أنت متأكد من حذف الطالب وجميع سجلات صلواته وخواطره نهائياً؟")) { 
-        try {
-            // 1. حذف سجلات الحضور
-            db.run("DELETE FROM attendance WHERE s_id = ?", [id]); 
-            
-            // 2. حذف سجلات الخواطر (تم تصحيح اسم العمود هنا إلى s_id)
-            db.run("DELETE FROM khawatir WHERE s_id = ?", [id]); 
-            
-            // 3. حذف الطالب نفسه
-            db.run("DELETE FROM students WHERE id = ?", [id]); 
-            
-            // 4. حفظ التغييرات
-            save(); 
-            
-            // 5. تحديث كل القوائم فوراً لضمان اختفاء الطالب من كل مكان
-            renderManageList(); 
-            renderRooms();
-            renderKhawatirRooms();
-            
-            alert("تم حذف الطالب وجميع بياناته بنجاح");
-        } catch (e) {
-            console.error("خطأ أثناء الحذف:", e);
-            alert("حدث خطأ أثناء محاولة الحذف");
-        }
-    }
-}
-
 
 function setPrayer() {
     const h = new Date().getHours();

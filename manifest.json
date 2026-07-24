@@ -1,11 +1,10 @@
 {
-  "name": "نظام حضور الطلاب",
-  "short_name": "الحضور",
-  "description": "تطبيق محلي لإدارة حضور وغياب الطلاب",
+  "name": "نظام المتابعة Pro",
+  "short_name": "المتابعة",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#f4f7f6",
-  "theme_color": "#0d6efd",
+  "background_color": "#f7fff7",
+  "theme_color": "#1a535c",
   "icons": [
     {
       "src": "https://cdn-icons-png.flaticon.com/512/3589/3589030.png",
