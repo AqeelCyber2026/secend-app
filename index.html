@@ -3,27 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>نظام المتابعة Pro</title>
+    <title>نظام المتابعة Pro - المطور</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
-    <link rel="manifest" href="manifest.json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #1a535c; --bg: #f7fff7; --card-bg: #ffffff; --text: #333333; }
         body.dark-mode { --primary: #4ecdc4; --bg: #1a1a1a; --card-bg: #2d2d2d; --text: #f0f0f0; }
-        body { background-color: var(--bg ); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; transition: 0.3s; user-select: none; }
-        .container { max-width: 800px; margin-top: 20px; padding-bottom: 50px; }
+        body { background-color: var(--bg  ); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; transition: 0.3s; user-select: none; }
+        .container { max-width: 950px; margin-top: 20px; padding-bottom: 50px; }
         .card { background-color: var(--card-bg); color: var(--text); border-radius: 15px; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .nav-pills .nav-link { cursor: pointer; font-weight: bold; color: var(--primary); border-radius: 25px; }
         .nav-pills .nav-link.active { background-color: var(--primary) !important; color: white !important; }
         .room-card { cursor: pointer; background: var(--card-bg); text-align: center; padding: 20px; border-radius: 15px; border: 1px solid #44444433; transition: 0.2s; }
         .room-card:active { transform: scale(0.95); background: var(--primary); color: white; }
         .bg-header { background: linear-gradient(135deg, #1a535c, #4ecdc4); color: white; border-radius: 15px; }
-        .student-done { background-color: #19875422 !important; }
         .d-none { display: none !important; }
         #loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
         .form-control, .form-select { background-color: var(--card-bg); color: var(--text); border-color: #44444433; border-radius: 10px; }
-
+        .table-responsive { border-radius: 12px; border: 1px solid #dee2e6; }
+        .table thead th { background-color: #1a535c; color: white; text-align: center; font-size: 0.9rem; }
+        .prayer-cell { min-width: 80px; text-align: center; }
+        .status-badge { font-weight: bold; font-size: 0.85rem; display: block; }
+        .note-text { font-size: 0.7rem; color: #6c757d; line-height: 1.1; margin-top: 2px; }
+        body.dark-mode .table thead th { background-color: #333; }
+        body.dark-mode .table td { border-color: #444; color: #eee; }
     </style>
 </head>
 <body>
