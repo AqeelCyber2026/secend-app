@@ -2,23 +2,40 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <!-- هذا السطر هو الأهم: يخبر الجوال أن عرض الصفحة يساوي عرض الشاشة -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>لوحة التقارير المتقدمة</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
     <style>
-        body { background-color: #f0f4f8; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .report-card { background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1 ); padding: 25px; margin-top: 30px; }
-        .student-block { border: 1px solid #e0e0e0; border-radius: 10px; margin-bottom: 15px; overflow: hidden; }
-        .student-header { background: #1a535c; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; }
-        .prayer-list { padding: 10px; display: flex; flex-wrap: wrap; gap: 10px; background: #fff; }
-        .prayer-item { background: #f8f9fa; border: 1px solid #dee2e6; padding: 5px 12px; border-radius: 20px; font-size: 0.9rem; }
+        /* تنسيق عام مرن */
+        body { background-color: #f0f4f8; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; }
+        .container { width: 100% !important; max-width: 100% !important; padding: 10px; }
+        .report-card { background: white; border-radius: 10px; padding: 15px; margin-top: 10px; }
+        
+        /* جعل كتل الطلاب مرنة جداً للجوال */
+        .student-block { border: 1px solid #e0e0e0; border-radius: 10px; margin-bottom: 15px; }
+        .student-header { background: #1a535c; color: white; padding: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        
+        .prayer-list { padding: 10px; display: grid; grid-template-columns: 1fr; gap: 8px; } /* عمود واحد للجوال */
+        .prayer-item { background: #f8f9fa; border: 1px solid #dee2e6; padding: 8px; border-radius: 8px; font-size: 0.95rem; display: flex; justify-content: space-between; }
+        
+        /* تحسينات إضافية للجوال */
+        @media (min-width: 600px ) {
+            .prayer-list { grid-template-columns: 1fr 1fr; } /* عمودين للأجهزة الأكبر قليلاً */
+        }
+        
         .status-صلى { color: #198754; font-weight: bold; }
         .status-متأخر { color: #fd7e14; font-weight: bold; }
         .status-نائم { color: #dc3545; font-weight: bold; }
-        .status-بعذر { color: #6c757d; font-weight: bold; }
-        .badge-room { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 5px; font-size: 0.8rem; }
+        
+        /* جعل الجداول قابلة للتمرير الجانبي في الجوال دون تخريب الصفحة */
+        .table-responsive { border: 0; }
+        
+        select, button { height: 45px; font-size: 1rem !important; } /* تكبير الأزرار للمس */
     </style>
 </head>
+
 <body>
 
 <div class="container">
