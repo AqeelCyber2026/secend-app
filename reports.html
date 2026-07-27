@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة التقارير المتقدمة</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <style>
+        body { background-color: #f0f4f8; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .report-card { background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1 ); padding: 25px; margin-top: 30px; }
+        .student-block { border: 1px solid #e0e0e0; border-radius: 10px; margin-bottom: 15px; overflow: hidden; }
+        .student-header { background: #1a535c; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; }
+        .prayer-list { padding: 10px; display: flex; flex-wrap: wrap; gap: 10px; background: #fff; }
+        .prayer-item { background: #f8f9fa; border: 1px solid #dee2e6; padding: 5px 12px; border-radius: 20px; font-size: 0.9rem; }
+        .status-صلى { color: #198754; font-weight: bold; }
+        .status-متأخر { color: #fd7e14; font-weight: bold; }
+        .status-نائم { color: #dc3545; font-weight: bold; }
+        .status-بعذر { color: #6c757d; font-weight: bold; }
+        .badge-room { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 5px; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="report-card">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold text-primary">📊 لوحة التقارير المتقدمة</h2>
+            <button class="btn btn-outline-secondary" onclick="window.close()">إغلاق الصفحة</button>
+        </div>
+
+        <div class="row g-3 mb-4 bg-light p-3 rounded-3">
+            <div class="col-md-4">
+                <label class="form-label fw-bold">نوع التقرير</label>
+                <select id="reportType" class="form-select" onchange="runReport()">
+                    <option value="daily">تقرير يومي (تجميعي)</option>
+                    <option value="detailed">تقرير تفصيلي (أسبوعي/شهري)</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">الفترة</label>
+                <select id="timeFrame" class="form-select" onchange="runReport()">
+                    <option value="0">اليوم</option>
+                    <option value="7">آخر 7 أيام</option>
+                    <option value="30">آخر 30 يوم</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button class="btn btn-primary w-100 fw-bold" onclick="runReport()">تحديث البيانات 🔄</button>
+            </div>
+        </div>
+
+        <div id="reportContent">
+            <!-- النتائج ستظهر هنا -->
+        </div>
+        
+        <div class="mt-4 text-center">
+            <button class="btn btn-success px-5 rounded-pill shadow" onclick="copyReport()">📋 نسخ التقرير للواتساب</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let db;
+    const config = { locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${f}` };
+
+    async function init( ) {
+        const SQL = await initSqlJs(config);
+        const saved = localStorage.getItem("prayer_pro_v8"); // التأكد من استخدام نفس المفتاح
+        if (saved) {
+            db = new SQL.Database(new Uint8Array(JSON.parse(saved)));
+            runReport();
+        } else {
+            document.getElementById('reportContent').innerHTML = "<div class='alert alert-warning'>لم يتم العثور على قاعدة بيانات. يرجى التأكد من حفظ البيانات في الصفحة الرئيسية أولاً.</div>";
+        }
+    }
+
+    function runReport() {
+        const type = document.getElementById('reportType').value;
+        const days = document.getElementById('timeFrame').value;
+        const today = new Date().toISOString().split('T')[0];
+        
+        let dateFilter = (days === "0") ? `a.date = '${today}'` : `a.date >= date('now', '-${days} days')`;
+
+        // الترتيب حسب الاسم ضرورة قصوى
+        const res = db.exec(`
+            SELECT s.name, s.room, a.prayer, a.status, a.notes, a.date
+            FROM attendance a 
+            JOIN students s ON a.s_id = s.id 
+            WHERE ${dateFilter}
+            ORDER BY s.name ASC, a.date DESC, a.prayer ASC
+        `);
+
+        const container = document.getElementById('reportContent');
+        container.innerHTML = "";
+
+        if (!res.length) {
+            container.innerHTML = "<p class='text-center p-5 text-muted'>لا توجد سجلات لهذه الفترة.</p>";
+            return;
+        }
+
+        const data = res[0].values;
+
+        if (type === 'daily') {
+            // منطق التجميع الذكي: اسم واحد لكل طالب
+            const grouped = {};
+            data.forEach(r => {
+                if (!grouped[r[0]]) grouped[r[0]] = { room: r[1], prayers: [] };
+                grouped[r[0]].prayers.push({ name: r[2], status: r[3], note: r[4] });
+            });
+
+            for (const name in grouped) {
+                let html = `
+                    <div class="student-block">
+                        <div class="student-header">
+                            <span class="fw-bold fs-5">${name}</span>
+                            <span class="badge-room">غرفة ${grouped[name].room}</span>
+                        </div>
+                        <div class="prayer-list">`;
+                
+                grouped[name].prayers.forEach(p => {
+                    html += `
+                        <div class="prayer-item">
+                            ${p.name}: <span class="status-${p.status}">${p.status}</span>
+                            ${p.note ? `<small class='text-muted'>(${p.note})</small>` : ''}
+                        </div>`;
+                });
+
+                html += `</div></div>`;
+                container.innerHTML += html;
+            }
+        } else {
+            // تقرير تفصيلي في جدول
+            let table = `<table class="table table-hover border">
+                <thead class="table-dark"><tr><th>الاسم</th><th>الغرفة</th><th>التاريخ</th><th>الصلاة</th><th>الحالة</th><th>ملاحظة</th></tr></thead>
+                <tbody>`;
+            data.forEach(r => {
+                table += `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[5]}</td><td>${r[2]}</td><td><span class="status-${r[3]}">${r[3]}</span></td><td>${r[4] || '-'}</td></tr>`;
+            });
+            table += `</tbody></table>`;
+            container.innerHTML = table;
+        }
+    }
+
+    function copyReport() {
+        let text = "📋 تقرير المتابعة المتقدم\n\n";
+        const type = document.getElementById('reportType').value;
+        
+        if (type === 'daily') {
+            document.querySelectorAll('.student-block').forEach(b => {
+                text += `👤 ${b.querySelector('.student-header').innerText.replace('\n', ' ')}\n`;
+                b.querySelectorAll('.prayer-item').forEach(p => {
+                    text += `  - ${p.innerText}\n`;
+                });
+                text += "\n";
+            });
+        } else {
+            document.querySelectorAll('tbody tr').forEach(tr => {
+                const c = tr.querySelectorAll('td');
+                text += `🔹 ${c[0].innerText} | ${c[3].innerText}: ${c[4].innerText}\n`;
+            });
+        }
+        
+        navigator.clipboard.writeText(text).then(() => alert("تم نسخ التقرير بنجاح!"));
+    }
+
+    init();
+</script>
+
+</body>
+</html>
