@@ -67,9 +67,11 @@
                             <option value="room">غرفة معينة</option>
                         </select>
                     </div>
-                    <div id="studentSelectDiv" class="col-md-3 d-none">
-                        <label class="form-label fw-bold small">اختر الطالب</label>
-                        <select id="studentList" class="form-select" onchange="runReport()"></select>
+                    <div id="studentSelectDiv" class="col-md-3 d-none position-relative">
+                        <label class="form-label fw-bold small">ابحث عن طالب (اكتب الاسم)</label>
+                        <input type="text" id="studentSearchInput" class="form-control" placeholder="اكتب اسم الطالب هنا..." oninput="filterStudentList()">
+                        <select id="studentList" class="form-select mt-1" size="5" style="display:none; position:absolute; z-index:1000; width:100%;" onchange="selectStudentFromList()"></select>
+                        <input type="hidden" id="selectedStudentId">
                     </div>
                     <div id="roomSelectDiv" class="col-md-3 d-none">
                         <label class="form-label fw-bold small">رقم الغرفة</label>
@@ -215,21 +217,60 @@
         document.getElementById('roomSelectDiv').classList.toggle('d-none', scope !== 'room');
     }
 
+    let allStudents = [];
     function loadStudentList() {
         try {
             const res = db.exec("SELECT id, name FROM students ORDER BY name ASC");
-            const select = document.getElementById('studentList');
             if (res.length && res[0].values.length) {
-                let html = '<option value="">-- اختر طالباً --</option>';
-                html += res[0].values.map(v => `<option value="${v[0]}">${v[1]}</option>`).join('');
-                select.innerHTML = html;
-            } else {
-                select.innerHTML = '<option value="">لا يوجد طلاب</option>';
+                allStudents = res[0].values.map(v => ({ id: v[0], name: v[1] }));
             }
         } catch (e) {
             console.error("Error loading students:", e);
         }
     }
+
+    function filterStudentList() {
+        const input = document.getElementById('studentSearchInput').value.toLowerCase();
+        const select = document.getElementById('studentList');
+        
+        if (input.length < 1) {
+            select.style.display = 'none';
+            return;
+        }
+
+        const filtered = allStudents.filter(s => s.name.toLowerCase().includes(input));
+        
+        if (filtered.length > 0) {
+            select.innerHTML = filtered.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            select.style.display = 'block';
+        } else {
+            select.innerHTML = '<option value="">لا يوجد نتائج</option>';
+            select.style.display = 'block';
+        }
+    }
+
+    function selectStudentFromList() {
+        const select = document.getElementById('studentList');
+        const input = document.getElementById('studentSearchInput');
+        const hiddenId = document.getElementById('selectedStudentId');
+        
+        if (select.value) {
+            const selectedText = select.options[select.selectedIndex].text;
+            input.value = selectedText;
+            hiddenId.value = select.value;
+            select.style.display = 'none';
+            runReport();
+        }
+    }
+
+    // إغلاق قائمة البحث عند النقر خارجها
+    document.addEventListener('click', function(e) {
+        const select = document.getElementById('studentList');
+        const input = document.getElementById('studentSearchInput');
+        if (e.target !== input && e.target !== select) {
+            select.style.display = 'none';
+        }
+    });
 
     // 3. توليد التقارير
     function runReport() {
@@ -243,9 +284,9 @@
         let filter = (days === "0") ? `a.date = '${today}'` : `a.date >= date('now', '-${days} days')`;
         
         if (scope === 'student') {
-            const studentId = document.getElementById('studentList').value;
+            const studentId = document.getElementById('selectedStudentId').value;
             if (!studentId) {
-                output.innerHTML = "<div class='text-center p-5 text-muted'>يرجى اختيار طالب من القائمة</div>";
+                output.innerHTML = "<div class='text-center p-5 text-muted'>يرجى كتابة اسم الطالب واختياره من القائمة</div>";
                 return;
             }
             filter += ` AND s.id = ${studentId}`;
