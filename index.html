@@ -2,418 +2,151 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <!-- تحسين العرض على الجوال ومنع التكبير العشوائي -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>نظام التقارير الاحترافي V2</title>
-    
-    <!-- مكتبات التصميم والرسوم البيانية -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>نظام المتابعة Pro - المطور</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
     <style>
-        :root { --primary-color: #2c3e50; --secondary-color: #34495e; --accent-color: #3498db; }
-        body { background-color: #f4f7f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .main-card { background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); padding: 20px; margin-top: 20px; }
-        .nav-pills .nav-link { border-radius: 10px; font-weight: bold; margin-left: 5px; color: var(--secondary-color); background: #eee; }
-        .nav-pills .nav-link.active { background-color: var(--accent-color); color: white; }
-        .student-block { border: 1px solid #ddd; border-radius: 12px; margin-bottom: 15px; overflow: hidden; background: #fff; }
-        .student-header { background: var(--primary-color); color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; }
-        .prayer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; padding: 15px; }
-        .prayer-item { background: #f8f9fa; border: 1px solid #e9ecef; padding: 10px; border-radius: 8px; text-align: center; }
-        .status-صلى { color: #27ae60; font-weight: bold; }
-        .status-متأخر { color: #f39c12; font-weight: bold; }
-        .status-نائم { color: #e74c3c; font-weight: bold; }
-        .chart-container { position: relative; height: 300px; width: 100%; margin-bottom: 30px; }
-        .btn-whatsapp { background-color: #25D366; color: white; border: none; }
-        .btn-whatsapp:hover { background-color: #128C7E; color: white; }
-        @media (max-width: 600px) { .prayer-grid { grid-template-columns: 1fr 1fr; } }
+        :root { --primary: #1a535c; --bg: #f7fff7; --card-bg: #ffffff; --text: #333333; }
+        body.dark-mode { --primary: #4ecdc4; --bg: #1a1a1a; --card-bg: #2d2d2d; --text: #f0f0f0; }
+        body { background-color: var(--bg  ); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; transition: 0.3s; user-select: none; }
+        .container { max-width: 950px; margin-top: 20px; padding-bottom: 50px; }
+        .card { background-color: var(--card-bg); color: var(--text); border-radius: 15px; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .nav-pills .nav-link { cursor: pointer; font-weight: bold; color: var(--primary); border-radius: 25px; }
+        .nav-pills .nav-link.active { background-color: var(--primary) !important; color: white !important; }
+        .room-card { cursor: pointer; background: var(--card-bg); text-align: center; padding: 20px; border-radius: 15px; border: 1px solid #44444433; transition: 0.2s; }
+        .room-card:active { transform: scale(0.95); background: var(--primary); color: white; }
+        .bg-header { background: linear-gradient(135deg, #1a535c, #4ecdc4); color: white; border-radius: 15px; }
+        .d-none { display: none !important; }
+        #loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
+        .form-control, .form-select { background-color: var(--card-bg); color: var(--text); border-color: #44444433; border-radius: 10px; }
+        .table-responsive { border-radius: 12px; border: 1px solid #dee2e6; }
+        .table thead th { background-color: #1a535c; color: white; text-align: center; font-size: 0.9rem; }
+        .prayer-cell { min-width: 80px; text-align: center; }
+        .status-badge { font-weight: bold; font-size: 0.85rem; display: block; }
+        .note-text { font-size: 0.7rem; color: #6c757d; line-height: 1.1; margin-top: 2px; }
+        body.dark-mode .table thead th { background-color: #333; }
+        body.dark-mode .table td { border-color: #444; color: #eee; }
     </style>
 </head>
 <body>
 
-<div class="container mb-5">
-    <div class="main-card">
-        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
-            <h3 class="fw-bold text-primary">📊 لوحة التحكم والتقارير</h3>
-            <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-danger" onclick="window.close()">خروج</button>
+<div id="loading-overlay">
+    <div class="spinner-border text-primary mb-3"></div>
+    <h5>جاري تشغيل النظام الذكي...</h5>
+</div>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold m-0" style="color: var(--primary);">🕌 المتابعة Pro</h3>
+        <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="toggleDarkMode()">🌙 الوضع الليلي</button>
+    </div>
+    
+    <ul class="nav nav-pills mb-4 justify-content-center bg-white p-2 rounded-pill shadow-sm">
+        <li class="nav-item"><a class="nav-link active" id="btn-rooms" onclick="switchTab('rooms')">🏠 الجولات</a></li>
+        <li class="nav-item"><a class="nav-link" id="btn-khawatir" onclick="switchTab('khawatir')">🎤 الخواطر</a></li>
+        <li class="nav-item">
+    <a class="nav-link bg-warning text-dark ms-2" href="reports.html" target="_blank">🚀 تقارير متقدمة</a>
+</li>
+
+        <li class="nav-item"><a class="nav-link" id="btn-manage" onclick="switchTab('manage')">⚙️ الإدارة</a></li>
+    </ul>
+
+    <!-- الجولات -->
+    <div id="view-rooms" class="content-view">
+        <div class="card p-4 mb-4 bg-header shadow">
+            <div class="row g-2 align-items-center">
+                <div class="col-6"><h6>وقت الصلاة:</h6></div>
+                <div class="col-6"><select id="prayerSelect" class="form-select form-select-sm"></select></div>
+                <div class="col-12 mt-2"><input type="text" id="roomSearch" class="form-control form-control-sm" placeholder="🔍 بحث عن غرفة..." onkeyup="filterRooms()"></div>
             </div>
         </div>
-
-        <!-- التبويبات الرئيسية -->
-        <ul class="nav nav-pills mb-4 justify-content-center" id="pills-tab" role="tablist">
-            <li class="nav-item">
-                <button class="nav-link active" id="tab-reports" data-bs-toggle="pill" data-bs-target="#content-reports">📝 التقارير</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" id="tab-analytics" data-bs-toggle="pill" data-bs-target="#content-analytics" onclick="renderCharts()">📈 التحليل البياني</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" id="tab-admin" data-bs-toggle="pill" data-bs-target="#content-admin">⚙️ الإدارة والنقل</button>
-            </li>
-        </ul>
-
-        <div class="tab-content">
-            <!-- قسم التقارير -->
-            <div class="tab-pane fade show active" id="content-reports">
-                <div class="row g-3 mb-4 bg-light p-3 rounded-3 shadow-sm">
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold small">نطاق التقرير</label>
-                        <select id="scopeType" class="form-select" onchange="toggleScopeInputs()">
-                            <option value="all">الجميع</option>
-                            <option value="student">طالب معين</option>
-                            <option value="room">غرفة معينة</option>
-                        </select>
-                    </div>
-                    <div id="studentSelectDiv" class="col-md-3 d-none">
-                        <label class="form-label fw-bold small">اختر الطالب</label>
-                        <select id="studentList" class="form-select"></select>
-                    </div>
-                    <div id="roomSelectDiv" class="col-md-3 d-none">
-                        <label class="form-label fw-bold small">رقم الغرفة</label>
-                        <input type="text" id="roomNumber" class="form-select" placeholder="مثلاً: 101">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold small">الفترة الزمنية</label>
-                        <select id="timeFrame" class="form-select">
-                            <option value="0">اليوم</option>
-                            <option value="7">آخر 7 أيام</option>
-                            <option value="30">آخر 30 يوم</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button class="btn btn-primary w-100 fw-bold" onclick="runReport()">توليد التقرير 🔍</button>
-                    </div>
+        <div id="roomsGrid" class="row g-3"></div>
+        <div id="attendanceDetail" class="mt-4 d-none">
+            <div class="card p-4">
+                <div class="d-flex justify-content-between mb-3">
+                    <h5 id="roomTitle" class="fw-bold text-primary"></h5>
+                    <button class="btn btn-sm btn-light border rounded-pill" onclick="closeSubView('rooms')">إغلاق</button>
                 </div>
-
-                <div id="reportOutput" class="mt-3">
-                    <div class="text-center p-5 text-muted">الرجاء اختيار الفلاتر والضغط على توليد التقرير</div>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead><tr class="small text-muted"><th>الطالب</th><th>الحالة</th><th>ملاحظة</th></tr></thead>
+                        <tbody id="attendanceList"></tbody>
+                    </table>
                 </div>
-                
-                <div class="mt-4 d-flex gap-2 justify-content-center">
-                    <button class="btn btn-success rounded-pill px-4" onclick="exportToExcel()">📥 تصدير Excel</button>
-                    <button class="btn btn-dark rounded-pill px-4" onclick="copyToWhatsApp()">📋 نسخ للواتساب</button>
-                </div>
+                <button class="btn btn-primary w-100 py-3 rounded-4 fw-bold mt-2 shadow" onclick="savePrayerAttendance()">💾 حفظ التعديلات</button>
             </div>
+        </div>
+    </div>
 
-            <!-- قسم التحليل البياني -->
-            <div class="tab-pane fade" id="content-analytics">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="card p-3 mb-3 shadow-sm">
-                            <h6 class="fw-bold mb-3 text-center">🏆 الطلاب الأكثر غياباً (نائم)</h6>
-                            <div class="chart-container">
-                                <canvas id="absentStudentsChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card p-3 mb-3 shadow-sm">
-                            <h6 class="fw-bold mb-3 text-center">🏢 ترتيب الغرف حسب الانضباط</h6>
-                            <div class="chart-container">
-                                <canvas id="roomsRankChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
+    <!-- الخواطر -->
+    <div id="view-khawatir" class="content-view d-none">
+        <div class="card p-4 mb-4 text-white shadow-sm" style="background: linear-gradient(135deg, #6a11cb, #2575fc);">
+            <h6 class="m-0">🎤 إدارة تكاليف الخواطر</h6>
+        </div>
+        <div id="khawatirRoomsGrid" class="row g-3"></div>
+        <div id="khawatirDetail" class="mt-4 d-none">
+            <div class="card p-4">
+                <div class="d-flex justify-content-between mb-3">
+                    <h5 id="khawatirRoomTitle" class="fw-bold" style="color: #6a11cb;"></h5>
+                    <button class="btn btn-sm btn-light border rounded-pill" onclick="closeSubView('khawatir')">إغلاق</button>
                 </div>
-            </div>
-
-            <!-- قسم الإدارة والنقل -->
-            <div class="tab-pane fade" id="content-admin">
-                <div class="alert alert-info small">
-                    استخدم هذا القسم لنقل البيانات من جهاز لآخر أو لتحديث أرقام هواتف الطلاب.
-                </div>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="card p-3 h-100">
-                            <h6 class="fw-bold">💾 النسخ الاحتياطي والنقل</h6>
-                            <p class="text-muted small">قم بتصدير الملف من جهازك القديم واستيراده في الجهاز الجديد.</p>
-                            <div class="d-grid gap-2">
-                                <button class="btn btn-outline-primary" onclick="exportBackup()">📤 تصدير نسخة احتياطية (.json)</button>
-                                <input type="file" id="importFile" class="d-none" onchange="importBackup(this)">
-                                <button class="btn btn-outline-success" onclick="document.getElementById('importFile').click()">📥 استيراد نسخة احتياطية</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card p-3 h-100">
-                            <h6 class="fw-bold">📱 تحديث أرقام الهواتف</h6>
-                            <div id="phoneUpdateList" style="max-height: 200px; overflow-y: auto;" class="mb-2 border p-2 rounded">
-                                <!-- سيتم تعبئته برمجياً -->
-                            </div>
-                            <button class="btn btn-sm btn-primary" onclick="saveAllPhones()">حفظ جميع التعديلات</button>
-                        </div>
-                    </div>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead><tr class="small text-muted"><th>الطالب</th><th>التكليف</th><th>الحالة</th><th>إجراء</th></tr></thead>
+                        <tbody id="khawatirList"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- التقارير -->
+    <div id="view-reports" class="content-view d-none">
+        <div class="card p-4 mb-4 shadow-sm">
+            <h6 class="fw-bold mb-3">📈 إحصائيات الحضور</h6>
+            <div style="height: 200px;"><canvas id="statsChart"></canvas></div>
+        </div>
+        <div class="card p-4 shadow-sm">
+            <div class="row g-2 mb-3">
+                <div class="col-6"><select id="repTarget" class="form-select" onchange="toggleRepName()"><option value="all">الكل</option><option value="one">طالب</option></select></div>
+                <div class="col-6"><select id="repPeriod" class="form-select"><option value="today">اليوم</option><option value="week">أسبوع</option></select></div>
+                <div id="repNameDiv" class="col-12 d-none"><input type="text" id="repName" class="form-control" placeholder="اسم الطالب..."></div>
+            </div>
+            <button class="btn btn-info w-100 text-white fw-bold rounded-pill" onclick="generateFullReport()">🚀 عرض التقرير</button>
+            <div id="repArea" class="mt-4 d-none">
+                <button class="btn btn-dark btn-sm mb-3 rounded-pill px-3" onclick="copyToClipboard()">📋 نسخ للواتساب</button>
+                <div id="repTable"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- الإدارة -->
+    <div id="view-manage" class="content-view d-none">
+        <div class="card p-4 mb-3 shadow-sm">
+            <h6 class="fw-bold mb-3">💾 النسخ الاحتياطي</h6>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary btn-sm flex-grow-1 rounded-pill" onclick="exportBackup()">📥 تصدير</button>
+                <button class="btn btn-outline-warning btn-sm flex-grow-1 rounded-pill" onclick="document.getElementById('importFile').click()">📤 استيراد</button>
+                <input type="file" id="importFile" class="d-none" onchange="importBackup(this)">
+            </div>
+        </div>
+        <div class="card p-4 mb-3 shadow-sm">
+            <h6 class="fw-bold mb-3">➕ إضافة طالب</h6>
+            <div class="row g-2">
+                <div class="col-7"><input type="text" id="mName" class="form-control" placeholder="الاسم"></div>
+                <div class="col-5"><input type="text" id="mRoom" class="form-control" placeholder="الغرفة"></div>
+                <button class="btn btn-success w-100 mt-2 fw-bold rounded-pill" onclick="addNewStudent()">إضافة</button>
+            </div>
+        </div>
+        <div class="card p-4 shadow-sm">
+            <input type="text" id="mSearch" class="form-control mb-3 rounded-pill" placeholder="بحث..." onkeyup="renderManageList()">
+            <div id="mList"></div>
+        </div>
+    </div>
 </div>
 
-<script>
-    let db;
-    let charts = {};
-    const DB_KEY = "prayer_pro_v8";
-
-    // 1. تهيئة قاعدة البيانات
-    async function init() {
-        const SQL = await initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${f}` });
-        const saved = localStorage.getItem(DB_KEY);
-        
-        if (saved) {
-            db = new SQL.Database(new Uint8Array(JSON.parse(saved)));
-            checkSchema(); // التأكد من وجود حقل الهاتف
-            loadStudentList();
-            renderPhoneList();
-        } else {
-            document.getElementById('reportOutput').innerHTML = "<div class='alert alert-warning'>لم يتم العثور على بيانات. يرجى الحفظ من الصفحة الرئيسية أولاً.</div>";
-        }
-    }
-
-    // إضافة حقل الهاتف إذا لم يكن موجوداً
-    function checkSchema() {
-        try {
-            db.exec("ALTER TABLE students ADD COLUMN phone TEXT;");
-            saveDB();
-        } catch(e) { /* العمود موجود مسبقاً */ }
-    }
-
-    function saveDB() {
-        const data = db.export();
-        localStorage.setItem(DB_KEY, JSON.stringify(Array.from(data)));
-    }
-
-    // 2. التحكم في الواجهة
-    function toggleScopeInputs() {
-        const scope = document.getElementById('scopeType').value;
-        document.getElementById('studentSelectDiv').classList.toggle('d-none', scope !== 'student');
-        document.getElementById('roomSelectDiv').classList.toggle('d-none', scope !== 'room');
-    }
-
-    function loadStudentList() {
-        const res = db.exec("SELECT id, name FROM students ORDER BY name ASC");
-        const select = document.getElementById('studentList');
-        if (res.length) {
-            select.innerHTML = res[0].values.map(v => `<option value="${v[0]}">${v[1]}</option>`).join('');
-        }
-    }
-
-    // 3. توليد التقارير
-    function runReport() {
-        const scope = document.getElementById('scopeType').value;
-        const days = document.getElementById('timeFrame').value;
-        const today = new Date().toISOString().split('T')[0];
-        
-        let filter = (days === "0") ? `a.date = '${today}'` : `a.date >= date('now', '-${days} days')`;
-        
-        if (scope === 'student') {
-            filter += ` AND s.id = ${document.getElementById('studentList').value}`;
-        } else if (scope === 'room') {
-            filter += ` AND s.room = '${document.getElementById('roomNumber').value}'`;
-        }
-
-        const res = db.exec(`
-            SELECT s.name, s.room, a.prayer, a.status, a.notes, a.date, s.phone, s.id
-            FROM attendance a 
-            JOIN students s ON a.s_id = s.id 
-            WHERE ${filter}
-            ORDER BY a.date DESC, s.name ASC, a.prayer ASC
-        `);
-
-        const output = document.getElementById('reportOutput');
-        output.innerHTML = "";
-
-        if (!res.length || !res[0].values.length) {
-            output.innerHTML = "<div class='text-center p-5'>لا توجد سجلات.</div>";
-            return;
-        }
-
-        const data = res[0].values;
-        const grouped = {};
-        
-        data.forEach(r => {
-            const key = `${r[0]}_${r[5]}`; // تجميع حسب الاسم والتاريخ
-            if (!grouped[key]) grouped[key] = { name: r[0], room: r[1], date: r[5], phone: r[6], prayers: [] };
-            grouped[key].prayers.push({ pName: r[2], status: r[3], note: r[4] });
-        });
-
-        for (const key in grouped) {
-            const g = grouped[key];
-            let html = `
-                <div class="student-block shadow-sm">
-                    <div class="student-header">
-                        <div>
-                            <span class="fw-bold">${g.name}</span> 
-                            <small class="badge bg-secondary ms-2">غرفة ${g.room}</small>
-                            <div class="small opacity-75">${g.date}</div>
-                        </div>
-                        ${g.phone ? `<button class="btn btn-sm btn-whatsapp" onclick="sendWhatsApp('${g.phone}', '${g.name}', '${g.date}')">واتساب 📱</button>` : ''}
-                    </div>
-                    <div class="prayer-grid">`;
-            
-            g.prayers.forEach(p => {
-                html += `
-                    <div class="prayer-item">
-                        <div class="small text-muted">${p.pName}</div>
-                        <div class="status-${p.status}">${p.status}</div>
-                        ${p.note ? `<div class="x-small text-muted" style="font-size:10px">📝 ${p.note}</div>` : ''}
-                    </div>`;
-            });
-            html += `</div></div>`;
-            output.innerHTML += html;
-        }
-    }
-
-    // 4. التحليل البياني (Charts)
-    function renderCharts() {
-        if (!db) return;
-
-        // تعطيل الرسوم القديمة إذا وجدت
-        if (charts.absent) charts.absent.destroy();
-        if (charts.rooms) charts.rooms.destroy();
-
-        // أ) الطلاب الأكثر غياباً (نائم)
-        const resStudents = db.exec(`
-            SELECT s.name, COUNT(*) as count 
-            FROM attendance a JOIN students s ON a.s_id = s.id 
-            WHERE a.status = 'نائم' 
-            GROUP BY s.id ORDER BY count DESC LIMIT 5
-        `);
-
-        if (resStudents.length) {
-            const labels = resStudents[0].values.map(v => v[0]);
-            const values = resStudents[0].values.map(v => v[1]);
-            charts.absent = new Chart(document.getElementById('absentStudentsChart'), {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{ label: 'مرات الغياب', data: values, backgroundColor: '#e74c3c' }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-        }
-
-        // ب) الغرف الأكثر غياباً
-        const resRooms = db.exec(`
-            SELECT s.room, COUNT(*) as count 
-            FROM attendance a JOIN students s ON a.s_id = s.id 
-            WHERE a.status = 'نائم' 
-            GROUP BY s.room ORDER BY count DESC LIMIT 5
-        `);
-
-        if (resRooms.length) {
-            const labels = resRooms[0].values.map(v => "غرفة " + v[0]);
-            const values = resRooms[0].values.map(v => v[1]);
-            charts.rooms = new Chart(document.getElementById('roomsRankChart'), {
-                type: 'pie',
-                data: {
-                    labels: labels,
-                    datasets: [{ data: values, backgroundColor: ['#3498db', '#2ecc71', '#f1c40f', '#e67e22', '#9b59b6'] }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-        }
-    }
-
-    // 5. وظائف الواتساب والتصدير
-    function sendWhatsApp(phone, name, date) {
-        // تنظيف الرقم (إزالة أي رموز غير أرقام)
-        const cleanPhone = phone.replace(/\D/g, '');
-        let message = `السلام عليكم، تقرير متابعة الصلاة للابن: ${name}\nليوم: ${date}\n\n`;
-        
-        // جلب تفاصيل اليوم لهذا الطالب تحديداً
-        const res = db.exec(`SELECT prayer, status FROM attendance a JOIN students s ON a.s_id = s.id WHERE s.name='${name}' AND a.date='${date}'`);
-        if (res.length) {
-            res[0].values.forEach(v => {
-                message += `🔹 ${v[0]}: ${v[1]}\n`;
-            });
-        }
-        
-        const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-        window.open(url, '_blank');
-    }
-
-    function exportToExcel() {
-        const rows = [["الاسم", "الغرفة", "التاريخ", "الصلاة", "الحالة", "ملاحظات"]];
-        const res = db.exec("SELECT s.name, s.room, a.date, a.prayer, a.status, a.notes FROM attendance a JOIN students s ON a.s_id = s.id");
-        if (res.length) {
-            res[0].values.forEach(v => rows.push(v));
-            const ws = XLSX.utils.aoa_to_sheet(rows);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "التقارير");
-            XLSX.writeFile(wb, "تقرير_المتابعة.xlsx");
-        }
-    }
-
-    function copyToWhatsApp() {
-        let text = "📋 تقرير المتابعة\n\n";
-        document.querySelectorAll('.student-block').forEach(b => {
-            text += `👤 ${b.querySelector('.fw-bold').innerText} (${b.querySelector('.badge').innerText})\n`;
-            b.querySelectorAll('.prayer-item').forEach(p => {
-                const lines = p.innerText.split('\n');
-                text += `  - ${lines[0]}: ${lines[1]}\n`;
-            });
-            text += "\n";
-        });
-        navigator.clipboard.writeText(text).then(() => alert("تم النسخ بنجاح! يمكنك الآن لصقه في واتساب."));
-    }
-
-    // 6. الإدارة والنقل
-    function renderPhoneList() {
-        const res = db.exec("SELECT id, name, phone FROM students ORDER BY name ASC");
-        const div = document.getElementById('phoneUpdateList');
-        if (res.length) {
-            div.innerHTML = res[0].values.map(v => `
-                <div class="d-flex align-items-center mb-2 gap-2 border-bottom pb-1">
-                    <span class="small flex-grow-1">${v[1]}</span>
-                    <input type="text" class="form-control form-control-sm w-50 phone-input" data-id="${v[0]}" value="${v[2] || ''}" placeholder="9665xxx">
-                </div>
-            `).join('');
-        }
-    }
-
-    function saveAllPhones() {
-        document.querySelectorAll('.phone-input').forEach(input => {
-            const id = input.getAttribute('data-id');
-            const val = input.value;
-            db.run("UPDATE students SET phone = ? WHERE id = ?", [val, id]);
-        });
-        saveDB();
-        alert("تم حفظ جميع الأرقام بنجاح");
-    }
-
-    function exportBackup() {
-        const data = localStorage.getItem(DB_KEY);
-        const blob = new Blob([data], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `backup_prayer_${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
-    }
-
-    function importBackup(input) {
-        const file = input.files[0];
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const content = e.target.result;
-                JSON.parse(content); // التحقق من الصحة
-                localStorage.setItem(DB_KEY, content);
-                alert("تم استيراد البيانات بنجاح! سيتم إعادة تحميل الصفحة.");
-                location.reload();
-            } catch(err) {
-                alert("الملف غير صالح.");
-            }
-        };
-        reader.readAsText(file);
-    }
-
-    init();
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
