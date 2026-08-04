@@ -164,11 +164,14 @@
                     </div>
                     <div class="col-md-6">
                         <div class="card p-3 h-100">
-                            <h6 class="fw-bold">📱 تحديث أرقام الهواتف</h6>
-                            <div id="phoneUpdateList" style="max-height: 200px; overflow-y: auto;" class="mb-2 border p-2 rounded">
-                                <!-- سيتم تعبئته برمجياً -->
+                            <h6 class="fw-bold mb-3">📱 تحديث أرقام الهواتف حسب الغرف</h6>
+                            <div id="roomButtonsContainer" class="d-flex flex-wrap gap-2 mb-3 border-bottom pb-2">
+                                <!-- أزرار الغرف ستظهر هنا -->
                             </div>
-                            <button class="btn btn-sm btn-primary" onclick="saveAllPhones()">حفظ جميع التعديلات</button>
+                            <div id="phoneUpdateList" style="max-height: 250px; overflow-y: auto;" class="mb-2 border p-2 rounded bg-light">
+                                <div class="text-center text-muted p-4 small">اختر غرفة من الأعلى لعرض طلابها وإضافة أرقامهم</div>
+                            </div>
+                            <button class="btn btn-primary w-100 mt-2 fw-bold" onclick="saveAllPhones()">💾 حفظ التعديلات الحالية</button>
                         </div>
                     </div>
                 </div>
@@ -191,7 +194,7 @@
             db = new SQL.Database(new Uint8Array(JSON.parse(saved)));
             checkSchema(); // التأكد من وجود حقل الهاتف
             loadStudentList();
-            renderPhoneList();
+            renderRoomButtons();
         } else {
             document.getElementById('reportOutput').innerHTML = "<div class='alert alert-warning'>لم يتم العثور على بيانات. يرجى الحفظ من الصفحة الرئيسية أولاً.</div>";
         }
@@ -321,20 +324,18 @@
             // إضافة زر التقرير الشامل إذا كان المختار طالباً واحداً ولفترة زمنية
             if (scope === 'student' && days !== "0") {
                 const studentName = data[0][0];
-                const studentPhone = data[0][6];
+                const studentPhone = data[0][6] || "";
                 const studentId = data[0][7];
-                if (studentPhone) {
-                    output.innerHTML = `
-                        <div class="alert alert-primary d-flex justify-content-between align-items-center shadow-sm mb-4">
-                            <div>
-                                <strong>تقرير شامل:</strong> هل تود إرسال كامل سجل الفترة في رسالة واحدة؟
-                            </div>
-                            <button class="btn btn-whatsapp fw-bold" onclick="sendComprehensiveWhatsApp('${studentPhone}', '${studentName}', ${studentId}, ${days})">
-                                إرسال التقرير الشامل 📱
-                            </button>
+                output.innerHTML = `
+                    <div class="alert alert-primary d-flex justify-content-between align-items-center shadow-sm mb-4">
+                        <div>
+                            <strong>تقرير شامل:</strong> هل تود إرسال كامل سجل الفترة في رسالة واحدة؟
                         </div>
-                    `;
-                }
+                        <button class="btn btn-whatsapp fw-bold" onclick="sendComprehensiveWhatsApp('${studentPhone}', '${studentName}', ${studentId}, ${days})">
+                            إرسال التقرير الشامل 📱
+                        </button>
+                    </div>
+                `;
             }
         const grouped = {};
         
@@ -354,7 +355,7 @@
                             <small class="badge bg-secondary ms-2">غرفة ${g.room}</small>
                             <div class="small opacity-75">${new Date(g.date).toLocaleDateString('ar-SA', { weekday: 'long' })} | ${g.date}</div>
                         </div>
-                            ${g.phone ? `<button class="btn btn-sm btn-whatsapp" onclick="sendWhatsApp('${g.phone}', '${g.name}', '${g.date}')">واتساب 📱</button>` : ''}
+                            <button class="btn btn-sm btn-whatsapp" onclick="sendWhatsApp('${g.phone || ''}', '${g.name}', '${g.date}')">واتساب 📱</button>
                         </div>
                         <div class="prayer-grid">`;
                 
@@ -450,6 +451,10 @@
 
     // 5. وظائف الواتساب والتصدير
     function sendWhatsApp(phone, name, date) {
+        if (!phone || phone.trim() === "") {
+            alert(`⚠️ رقم الهاتف غير مسجل للطالب: ${name}\nيرجى إضافته من تبويب "الإدارة والنقل" أولاً.`);
+            return;
+        }
         const cleanPhone = phone.replace(/\D/g, '');
         let message = `*تقرير متابعة الصلاة*\n`;
         message += `👤 الطالب: ${name}\n`;
@@ -467,6 +472,10 @@
     }
 
     function sendComprehensiveWhatsApp(phone, name, studentId, days) {
+        if (!phone || phone.trim() === "") {
+            alert(`⚠️ رقم الهاتف غير مسجل للطالب: ${name}\nيرجى إضافته من تبويب "الإدارة والنقل" أولاً.`);
+            return;
+        }
         const cleanPhone = phone.replace(/\D/g, '');
         const periodText = days === "7" ? "آخر 7 أيام" : "آخر 30 يوم";
         let message = `*التقرير الشامل للمتابعة (${periodText})*\n`;
@@ -525,16 +534,44 @@
     }
 
     // 6. الإدارة والنقل
-    function renderPhoneList() {
-        const res = db.exec("SELECT id, name, phone FROM students ORDER BY name ASC");
+    function renderRoomButtons() {
+        try {
+            const res = db.exec("SELECT DISTINCT room FROM students ORDER BY room ASC");
+            const container = document.getElementById('roomButtonsContainer');
+            if (res.length && res[0].values.length) {
+                let html = '<button class="btn btn-sm btn-outline-secondary" onclick="renderPhoneList(\'all\')">الكل</button>';
+                html += res[0].values.map(v => `
+                    <button class="btn btn-sm btn-outline-primary" onclick="renderPhoneList('${v[0]}')">غرفة ${v[0]}</button>
+                `).join('');
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<span class="text-muted small">لا توجد غرف مسجلة</span>';
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function renderPhoneList(room = 'all') {
+        let sql = "SELECT id, name, phone, room FROM students ";
+        if (room !== 'all') {
+            sql += ` WHERE room = '${room}' `;
+        }
+        sql += " ORDER BY name ASC";
+        
+        const res = db.exec(sql);
         const div = document.getElementById('phoneUpdateList');
-        if (res.length) {
+        
+        if (res.length && res[0].values.length) {
             div.innerHTML = res[0].values.map(v => `
-                <div class="d-flex align-items-center mb-2 gap-2 border-bottom pb-1">
-                    <span class="small flex-grow-1">${v[1]}</span>
+                <div class="d-flex align-items-center mb-2 gap-2 border-bottom pb-1 bg-white p-2 rounded">
+                    <div class="flex-grow-1">
+                        <div class="fw-bold small">${v[1]}</div>
+                        <div class="x-small text-muted" style="font-size:10px">غرفة: ${v[3]}</div>
+                    </div>
                     <input type="text" class="form-control form-control-sm w-50 phone-input" data-id="${v[0]}" value="${v[2] || ''}" placeholder="9665xxx">
                 </div>
             `).join('');
+        } else {
+            div.innerHTML = '<div class="text-center p-4 text-muted">لا يوجد طلاب في هذه الغرفة</div>';
         }
     }
 
