@@ -69,7 +69,7 @@
                     </div>
                     <div id="studentSelectDiv" class="col-md-3 d-none">
                         <label class="form-label fw-bold small">اختر الطالب</label>
-                        <select id="studentList" class="form-select"></select>
+                        <select id="studentList" class="form-select" onchange="runReport()"></select>
                     </div>
                     <div id="roomSelectDiv" class="col-md-3 d-none">
                         <label class="form-label fw-bold small">رقم الغرفة</label>
@@ -114,6 +114,29 @@
                             <h6 class="fw-bold mb-3 text-center">🏢 ترتيب الغرف حسب الانضباط</h6>
                             <div class="chart-container">
                                 <canvas id="roomsRankChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card p-3 shadow-sm">
+                            <h6 class="fw-bold mb-3">📊 جدول الترتيب العام (الأكثر غياباً إلى الأقل)</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover text-center">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>الترتيب</th>
+                                            <th>الاسم</th>
+                                            <th>الغرفة</th>
+                                            <th>مرات الغياب (نائم)</th>
+                                            <th>الحالة</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="rankingTableBody">
+                                        <!-- سيتم تعبئته برمجياً -->
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -193,44 +216,66 @@
     }
 
     function loadStudentList() {
-        const res = db.exec("SELECT id, name FROM students ORDER BY name ASC");
-        const select = document.getElementById('studentList');
-        if (res.length) {
-            select.innerHTML = res[0].values.map(v => `<option value="${v[0]}">${v[1]}</option>`).join('');
+        try {
+            const res = db.exec("SELECT id, name FROM students ORDER BY name ASC");
+            const select = document.getElementById('studentList');
+            if (res.length && res[0].values.length) {
+                let html = '<option value="">-- اختر طالباً --</option>';
+                html += res[0].values.map(v => `<option value="${v[0]}">${v[1]}</option>`).join('');
+                select.innerHTML = html;
+            } else {
+                select.innerHTML = '<option value="">لا يوجد طلاب</option>';
+            }
+        } catch (e) {
+            console.error("Error loading students:", e);
         }
     }
 
     // 3. توليد التقارير
     function runReport() {
+        if (!db) return;
+        
         const scope = document.getElementById('scopeType').value;
         const days = document.getElementById('timeFrame').value;
         const today = new Date().toISOString().split('T')[0];
+        const output = document.getElementById('reportOutput');
         
         let filter = (days === "0") ? `a.date = '${today}'` : `a.date >= date('now', '-${days} days')`;
         
         if (scope === 'student') {
-            filter += ` AND s.id = ${document.getElementById('studentList').value}`;
+            const studentId = document.getElementById('studentList').value;
+            if (!studentId) {
+                output.innerHTML = "<div class='text-center p-5 text-muted'>يرجى اختيار طالب من القائمة</div>";
+                return;
+            }
+            filter += ` AND s.id = ${studentId}`;
         } else if (scope === 'room') {
-            filter += ` AND s.room = '${document.getElementById('roomNumber').value}'`;
+            const roomNum = document.getElementById('roomNumber').value;
+            if (!roomNum) {
+                output.innerHTML = "<div class='text-center p-5 text-muted'>يرجى إدخال رقم الغرفة</div>";
+                return;
+            }
+            filter += ` AND s.room = '${roomNum}'`;
         }
 
-        const res = db.exec(`
-            SELECT s.name, s.room, a.prayer, a.status, a.notes, a.date, s.phone, s.id
-            FROM attendance a 
-            JOIN students s ON a.s_id = s.id 
-            WHERE ${filter}
-            ORDER BY a.date DESC, s.name ASC, a.prayer ASC
-        `);
+        try {
+            const sql = `
+                SELECT s.name, s.room, a.prayer, a.status, a.notes, a.date, s.phone, s.id
+                FROM attendance a 
+                JOIN students s ON a.s_id = s.id 
+                WHERE ${filter}
+                ORDER BY a.date DESC, s.name ASC, a.prayer ASC
+            `;
+            const res = db.exec(sql);
 
-        const output = document.getElementById('reportOutput');
-        output.innerHTML = "";
+            output.innerHTML = "";
 
-        if (!res.length || !res[0].values.length) {
-            output.innerHTML = "<div class='text-center p-5'>لا توجد سجلات.</div>";
-            return;
-        }
+            if (!res.length || !res[0].values.length) {
+                output.innerHTML = "<div class='text-center p-5'>لا توجد سجلات لهذه الفترة.</div>";
+                return;
+            }
 
-        const data = res[0].values;
+            const data = res[0].values;
         const grouped = {};
         
         data.forEach(r => {
@@ -239,30 +284,34 @@
             grouped[key].prayers.push({ pName: r[2], status: r[3], note: r[4] });
         });
 
-        for (const key in grouped) {
-            const g = grouped[key];
-            let html = `
-                <div class="student-block shadow-sm">
-                    <div class="student-header">
+            for (const key in grouped) {
+                const g = grouped[key];
+                let html = `
+                    <div class="student-block shadow-sm">
+                        <div class="student-header">
                         <div>
                             <span class="fw-bold">${g.name}</span> 
                             <small class="badge bg-secondary ms-2">غرفة ${g.room}</small>
-                            <div class="small opacity-75">${g.date}</div>
+                            <div class="small opacity-75">${new Date(g.date).toLocaleDateString('ar-SA', { weekday: 'long' })} | ${g.date}</div>
                         </div>
-                        ${g.phone ? `<button class="btn btn-sm btn-whatsapp" onclick="sendWhatsApp('${g.phone}', '${g.name}', '${g.date}')">واتساب 📱</button>` : ''}
-                    </div>
-                    <div class="prayer-grid">`;
-            
-            g.prayers.forEach(p => {
-                html += `
-                    <div class="prayer-item">
-                        <div class="small text-muted">${p.pName}</div>
-                        <div class="status-${p.status}">${p.status}</div>
-                        ${p.note ? `<div class="x-small text-muted" style="font-size:10px">📝 ${p.note}</div>` : ''}
-                    </div>`;
-            });
-            html += `</div></div>`;
-            output.innerHTML += html;
+                            ${g.phone ? `<button class="btn btn-sm btn-whatsapp" onclick="sendWhatsApp('${g.phone}', '${g.name}', '${g.date}')">واتساب 📱</button>` : ''}
+                        </div>
+                        <div class="prayer-grid">`;
+                
+                g.prayers.forEach(p => {
+                    html += `
+                        <div class="prayer-item">
+                            <div class="small text-muted">${p.pName}</div>
+                            <div class="status-${p.status}">${p.status}</div>
+                            ${p.note ? `<div class="x-small text-muted" style="font-size:10px">📝 ${p.note}</div>` : ''}
+                        </div>`;
+                });
+                html += `</div></div>`;
+                output.innerHTML += html;
+            }
+        } catch (e) {
+            console.error("SQL Error:", e);
+            output.innerHTML = "<div class='alert alert-danger'>حدث خطأ أثناء جلب البيانات. يرجى التأكد من صحة الفلاتر.</div>";
         }
     }
 
@@ -314,6 +363,28 @@
                 },
                 options: { responsive: true, maintainAspectRatio: false }
             });
+        }
+
+        // ج) جدول الترتيب التفصيلي
+        const resRanking = db.exec(`
+            SELECT s.name, s.room, COUNT(CASE WHEN a.status = 'نائم' THEN 1 END) as absent_count
+            FROM students s
+            LEFT JOIN attendance a ON s.id = a.s_id
+            GROUP BY s.id
+            ORDER BY absent_count DESC, s.name ASC
+        `);
+
+        const tableBody = document.getElementById('rankingTableBody');
+        if (resRanking.length) {
+            tableBody.innerHTML = resRanking[0].values.map((v, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td>${v[0]}</td>
+                    <td>${v[1]}</td>
+                    <td><span class="badge bg-danger">${v[2]}</span></td>
+                    <td>${v[2] > 5 ? '⚠️ يحتاج متابعة' : '✅ جيد'}</td>
+                </tr>
+            `).join('');
         }
     }
 
