@@ -317,6 +317,25 @@
             }
 
             const data = res[0].values;
+
+            // إضافة زر التقرير الشامل إذا كان المختار طالباً واحداً ولفترة زمنية
+            if (scope === 'student' && days !== "0") {
+                const studentName = data[0][0];
+                const studentPhone = data[0][6];
+                const studentId = data[0][7];
+                if (studentPhone) {
+                    output.innerHTML = `
+                        <div class="alert alert-primary d-flex justify-content-between align-items-center shadow-sm mb-4">
+                            <div>
+                                <strong>تقرير شامل:</strong> هل تود إرسال كامل سجل الفترة في رسالة واحدة؟
+                            </div>
+                            <button class="btn btn-whatsapp fw-bold" onclick="sendComprehensiveWhatsApp('${studentPhone}', '${studentName}', ${studentId}, ${days})">
+                                إرسال التقرير الشامل 📱
+                            </button>
+                        </div>
+                    `;
+                }
+            }
         const grouped = {};
         
         data.forEach(r => {
@@ -431,17 +450,50 @@
 
     // 5. وظائف الواتساب والتصدير
     function sendWhatsApp(phone, name, date) {
-        // تنظيف الرقم (إزالة أي رموز غير أرقام)
         const cleanPhone = phone.replace(/\D/g, '');
-        let message = `السلام عليكم، تقرير متابعة الصلاة للابن: ${name}\nليوم: ${date}\n\n`;
+        let message = `*تقرير متابعة الصلاة*\n`;
+        message += `👤 الطالب: ${name}\n`;
+        message += `📅 التاريخ: ${new Date(date).toLocaleDateString('ar-SA', { weekday: 'long' })} ${date}\n\n`;
         
-        // جلب تفاصيل اليوم لهذا الطالب تحديداً
-        const res = db.exec(`SELECT prayer, status FROM attendance a JOIN students s ON a.s_id = s.id WHERE s.name='${name}' AND a.date='${date}'`);
+        const res = db.exec(`SELECT prayer, status FROM attendance a JOIN students s ON a.s_id = s.id WHERE s.id=(SELECT id FROM students WHERE name='${name}') AND a.date='${date}'`);
         if (res.length) {
             res[0].values.forEach(v => {
                 message += `🔹 ${v[0]}: ${v[1]}\n`;
             });
         }
+        
+        const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+    }
+
+    function sendComprehensiveWhatsApp(phone, name, studentId, days) {
+        const cleanPhone = phone.replace(/\D/g, '');
+        const periodText = days === "7" ? "آخر 7 أيام" : "آخر 30 يوم";
+        let message = `*التقرير الشامل للمتابعة (${periodText})*\n`;
+        message += `👤 الطالب: ${name}\n`;
+        message += `--------------------------\n\n`;
+        
+        const filter = `a.date >= date('now', '-${days} days') AND s.id = ${studentId}`;
+        const res = db.exec(`
+            SELECT a.date, a.prayer, a.status 
+            FROM attendance a 
+            JOIN students s ON a.s_id = s.id 
+            WHERE ${filter}
+            ORDER BY a.date DESC, a.prayer ASC
+        `);
+
+        if (res.length) {
+            let currentDate = "";
+            res[0].values.forEach(v => {
+                if (currentDate !== v[0]) {
+                    currentDate = v[0];
+                    message += `\n📅 *${currentDate}*:\n`;
+                }
+                message += ` - ${v[1]}: ${v[2]}\n`;
+            });
+        }
+        
+        message += `\n--------------------------\nتم الإرسال عبر نظام المتابعة المطور.`;
         
         const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
