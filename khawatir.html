@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>نظام إدارة الخواطر - المطور</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #6a11cb; --secondary: #2575fc; --bg: #f8f9fa; --card-bg: #ffffff; }
+        body { background-color: var(--bg); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .main-header { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 20px; border-radius: 0 0 25px 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .card { border-radius: 15px; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .room-btn { cursor: pointer; transition: 0.3s; border: 1px solid #ddd; }
+        .room-btn.active { background-color: var(--primary) !important; color: white !important; border-color: var(--primary); }
+        .status-badge { font-size: 0.8rem; padding: 5px 10px; border-radius: 20px; font-weight: bold; }
+        .status-تم-الأداء { background-color: #d1e7dd; color: #0f5132; }
+        .status-قيد-الانتظار { background-color: #fff3cd; color: #664d03; }
+        .status-رافض-بعذر { background-color: #e2e3e5; color: #41464b; }
+        .status-رافض-بدون-عذر { background-color: #f8d7da; color: #842029; }
+        .btn-whatsapp { background-color: #25D366; color: white; border: none; }
+        .btn-whatsapp:hover { background-color: #128C7E; color: white; }
+        .chart-container { position: relative; height: 250px; width: 100%; }
+        .student-row { transition: 0.2s; }
+        .student-row:hover { background-color: #f1f1f1; }
+    </style>
+</head>
+<body>
+
+<div class="main-header mb-4 text-center position-relative">
+    <a href="index.html" class="btn btn-sm btn-light rounded-pill position-absolute top-0 start-0 m-3 shadow-sm">🏠 الرئيسية</a>
+    <h2 class="fw-bold">🎤 إدارة تكاليف الخواطر</h2>
+    <p class="small opacity-75">تنظيم، متابعة، وتحليل أداء الطلاب في الخواطر</p>
+</div>
+
+<div class="container pb-5">
+    <!-- تبويبات التنقل -->
+    <ul class="nav nav-pills mb-4 justify-content-center bg-white p-2 rounded-pill shadow-sm" id="pills-tab" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active rounded-pill" data-bs-toggle="pill" data-bs-target="#view-manage">⚙️ التكاليف</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link rounded-pill" data-bs-toggle="pill" data-bs-target="#view-analytics" onclick="renderCharts()">📈 التحليل البياني</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link rounded-pill" data-bs-toggle="pill" data-bs-target="#view-sync">💾 المزامنة والنقل</button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- قسم إدارة التكاليف -->
+        <div class="tab-pane fade show active" id="view-manage">
+            <!-- فلاتر متقدمة -->
+            <div class="card p-3 mb-4">
+                <h6 class="fw-bold mb-3 border-bottom pb-2">🔍 فلاتر البحث والفرز</h6>
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label class="small fw-bold">حسب الحالة:</label>
+                        <select id="filterStatus" class="form-select form-select-sm" onchange="renderStudentList()">
+                            <option value="all">الكل</option>
+                            <option value="لم يكلف">لم يكلف بعد</option>
+                            <option value="قيد الانتظار">قيد الانتظار</option>
+                            <option value="تم الأداء">تم الأداء</option>
+                            <option value="رافض بعذر">رافض بعذر</option>
+                            <option value="رافض بدون عذر">رافض بدون عذر</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="small fw-bold">بحث بالاسم:</label>
+                        <input type="text" id="searchName" class="form-control form-control-sm" placeholder="اكتب اسم الطالب..." oninput="renderStudentList()">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="small fw-bold">فرز حسب الغرف:</label>
+                        <div id="roomButtons" class="d-flex flex-wrap gap-1 mt-1">
+                            <!-- أزرار الغرف ستظهر هنا -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- أزرار التقارير الجماعية -->
+            <div class="d-flex gap-2 mb-3 justify-content-center">
+                <button class="btn btn-dark btn-sm rounded-pill px-3" onclick="copyCollectiveReport('rejected')">📋 تقرير الرافضين</button>
+                <button class="btn btn-success btn-sm rounded-pill px-3" onclick="copyCollectiveReport('done')">✅ تقرير المنجزين</button>
+                <button class="btn btn-warning btn-sm rounded-pill px-3" onclick="copyCollectiveReport('pending')">⏳ تقرير المنتظرين</button>
+            </div>
+
+            <!-- قائمة الطلاب -->
+            <div id="studentListContainer">
+                <div class="text-center p-5 text-muted">جاري تحميل البيانات...</div>
+            </div>
+        </div>
+
+        <!-- قسم التحليل البياني -->
+        <div class="tab-pane fade" id="view-analytics">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card p-3 h-100">
+                        <h6 class="fw-bold text-center mb-3">📊 توزيع حالات الخواطر</h6>
+                        <div class="chart-container">
+                            <canvas id="statusPieChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card p-3 h-100">
+                        <h6 class="fw-bold text-center mb-3">🏆 الطلاب الأكثر إلقاءً للخواطر</h6>
+                        <div class="chart-container">
+                            <canvas id="topStudentsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card p-3 mt-4">
+                <h6 class="fw-bold mb-3">🏢 تقرير الغرف (نسبة الإنجاز)</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm text-center align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>الغرفة</th>
+                                <th>إجمالي الطلاب</th>
+                                <th>تم الأداء</th>
+                                <th>قيد الانتظار</th>
+                                <th>رفض</th>
+                                <th>نسبة الإنجاز</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roomStatsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- قسم المزامنة والنقل -->
+        <div class="tab-pane fade" id="view-sync">
+            <div class="card p-4 shadow-sm text-center">
+                <div class="mb-3">
+                    <div class="bg-light rounded-circle d-inline-block p-4 mb-3">
+                        <span style="font-size: 40px;">💾</span>
+                    </div>
+                    <h5 class="fw-bold">إدارة قاعدة البيانات</h5>
+                    <p class="text-muted small">استخدم هذه الخيارات لنقل البيانات بين أجهزتك أو للاحتفاظ بنسخة احتياطية.</p>
+                </div>
+                <div class="row g-3 justify-content-center">
+                    <div class="col-md-5">
+                        <button class="btn btn-outline-primary w-100 py-3 rounded-4 fw-bold" onclick="exportBackup()">
+                            📤 تصدير نسخة احتياطية (.json)
+                        </button>
+                    </div>
+                    <div class="col-md-5">
+                        <input type="file" id="importFile" class="d-none" onchange="importBackup(this)">
+                        <button class="btn btn-outline-success w-100 py-3 rounded-4 fw-bold" onclick="document.getElementById('importFile').click()">
+                            📥 استيراد نسخة احتياطية
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-4 alert alert-info small py-2">
+                    ملاحظة: استيراد ملف جديد سيقوم باستبدال البيانات الحالية في هذا المتصفح.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- مودال التكليف -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 20px;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold">🎤 تكليف بخاطرة جديدة</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="modalStudentId">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">الطالب:</label>
+                    <input type="text" id="modalStudentName" class="form-control" readonly>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small fw-bold">وقت الصلاة:</label>
+                        <select id="modalPrayer" class="form-select">
+                            <option value="الفجر">الفجر</option>
+                            <option value="الظهر">الظهر</option>
+                            <option value="العصر">العصر</option>
+                            <option value="المغرب">المغرب</option>
+                            <option value="العشاء">العشاء</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-bold">التاريخ:</label>
+                        <input type="date" id="modalDate" class="form-control">
+                    </div>
+                </div>
+                <button class="btn btn-primary w-100 rounded-pill fw-bold py-2" onclick="saveAssignment()">تأكيد التكليف 🚀</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- مودال تحديث الحالة (رفض/تم) -->
+<div class="modal fade" id="updateStatusModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 20px;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold">📝 تحديث حالة الخاطرة</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="updateKid">
+                <input type="hidden" id="updateSid">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">الحالة الجديدة:</label>
+                    <select id="updateStatusSelect" class="form-select" onchange="toggleExcuseField()">
+                        <option value="تم الأداء">✅ تم الأداء بنجاح</option>
+                        <option value="رافض بعذر">⚪ رافض بعذر</option>
+                        <option value="رافض بدون عذر">🔴 رافض بدون عذر</option>
+                        <option value="مفعل">🔄 إعادة تفعيل (حذف التكليف)</option>
+                    </select>
+                </div>
+                <div id="excuseField" class="mb-3 d-none">
+                    <label class="form-label small fw-bold">الملاحظة / العذر:</label>
+                    <textarea id="updateNotes" class="form-control" rows="2" placeholder="اكتب العذر هنا..."></textarea>
+                </div>
+                <button class="btn btn-success w-100 rounded-pill fw-bold py-2" onclick="confirmStatusUpdate()">حفظ التعديل ✅</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let db;
+    let currentRoom = 'all';
+    let charts = {};
+    const DB_KEY = "prayer_pro_v8";
+
+    async function init() {
+        const SQL = await initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${f}` });
+        const saved = localStorage.getItem(DB_KEY);
+        if (saved) {
+            db = new SQL.Database(new Uint8Array(JSON.parse(saved)));
+            checkSchema();
+            renderRoomButtons();
+            renderStudentList();
+        } else {
+            document.getElementById('studentListContainer').innerHTML = "<div class='alert alert-warning'>لم يتم العثور على قاعدة بيانات.</div>";
+        }
+    }
+
+    function checkSchema() {
+        try {
+            db.exec("ALTER TABLE khawatir ADD COLUMN notes TEXT;");
+            db.exec("ALTER TABLE students ADD COLUMN phone TEXT;");
+            saveDB();
+        } catch(e) {}
+    }
+
+    function saveDB() {
+        const data = db.export();
+        localStorage.setItem(DB_KEY, JSON.stringify(Array.from(data)));
+    }
+
+    function renderRoomButtons() {
+        const res = db.exec("SELECT DISTINCT room FROM students ORDER BY room ASC");
+        const container = document.getElementById('roomButtons');
+        if (res.length) {
+            let html = `<button class="btn btn-sm btn-outline-secondary rounded-pill px-3 active" id="room-all" onclick="filterByRoom('all')">الكل</button>`;
+            res[0].values.forEach(v => {
+                html += `<button class="btn btn-sm btn-outline-primary rounded-pill px-3" id="room-${v[0]}" onclick="filterByRoom('${v[0]}')">غرفة ${v[0]}</button>`;
+            });
+            container.innerHTML = html;
+        }
+    }
+
+    function filterByRoom(room) {
+        currentRoom = room;
+        document.querySelectorAll('#roomButtons button').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`room-${room}`).classList.add('active');
+        renderStudentList();
+    }
+
+    function renderStudentList() {
+        const statusFilter = document.getElementById('filterStatus').value;
+        const nameSearch = document.getElementById('searchName').value.toLowerCase();
+        
+        let sql = `
+            SELECT s.id, s.name, s.room, s.phone, k.prayer, k.k_date, k.status, k.notes, k.id as kid
+            FROM students s
+            LEFT JOIN khawatir k ON s.id = k.s_id AND k.status != 'مفعل'
+            WHERE 1=1
+        `;
+        
+        if (currentRoom !== 'all') sql += ` AND s.room = '${currentRoom}'`;
+        if (nameSearch) sql += ` AND s.name LIKE '%${nameSearch}%'`;
+        
+        const res = db.exec(sql + " ORDER BY s.room ASC, s.name ASC");
+        const container = document.getElementById('studentListContainer');
+        container.innerHTML = "";
+
+        if (!res.length || !res[0].values.length) {
+            container.innerHTML = "<div class='text-center p-5 text-muted'>لا توجد نتائج تطابق البحث</div>";
+            return;
+        }
+
+        let students = res[0].values;
+        
+        // تطبيق فلتر الحالة برمجياً للتعامل مع "لم يكلف"
+        if (statusFilter !== 'all') {
+            students = students.filter(s => {
+                const status = s[6] || 'لم يكلف';
+                return status === statusFilter;
+            });
+        }
+
+        students.forEach(s => {
+            const id = s[0], name = s[1], room = s[2], phone = s[3], prayer = s[4], k_date = s[5], status = s[6] || 'لم يكلف', notes = s[7], kid = s[8];
+            
+            const card = document.createElement('div');
+            card.className = 'card p-3 student-row';
+            card.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-light rounded-circle p-3 text-center" style="width:50px; height:50px; line-height:20px">
+                            <small class="fw-bold text-primary">${room}</small>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0">${name}</h6>
+                            <span class="status-badge status-${status.replace(/ /g, '-')}">${status}</span>
+                            ${k_date ? `<small class="text-muted d-block">${prayer} | ${k_date}</small>` : ''}
+                            ${notes ? `<small class="text-danger d-block">📝 ${notes}</small>` : ''}
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-2 mt-md-0">
+                        ${!kid ? 
+                            `<button class="btn btn-sm btn-primary rounded-pill px-3" onclick="openAssignModal(${id}, '${name}')">تكليف 🎤</button>` : 
+                            `<button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="openUpdateModal(${kid}, ${id}, '${status}', '${notes||''}')">تحديث 📝</button>`
+                        }
+                        <button class="btn btn-sm btn-whatsapp rounded-pill px-3" onclick="sendWhatsApp('${phone||''}', '${name}', '${status}', '${prayer||''}', '${k_date||''}')">واتساب 📱</button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // --- وظائف المودال ---
+    function openAssignModal(id, name) {
+        document.getElementById('modalStudentId').value = id;
+        document.getElementById('modalStudentName').value = name;
+        document.getElementById('modalDate').value = new Date().toISOString().split('T')[0];
+        new bootstrap.Modal(document.getElementById('assignModal')).show();
+    }
+
+    function saveAssignment() {
+        const sid = document.getElementById('modalStudentId').value;
+        const prayer = document.getElementById('modalPrayer').value;
+        const date = document.getElementById('modalDate').value;
+        if (!date) return alert("يرجى اختيار التاريخ");
+
+        db.run("INSERT INTO khawatir (s_id, prayer, k_date, status) VALUES (?, ?, ?, ?)", [sid, prayer, date, 'قيد الانتظار']);
+        saveDB();
+        bootstrap.Modal.getInstance(document.getElementById('assignModal')).hide();
+        renderStudentList();
+    }
+
+    function openUpdateModal(kid, sid, status, notes) {
+        document.getElementById('updateKid').value = kid;
+        document.getElementById('updateSid').value = sid;
+        document.getElementById('updateStatusSelect').value = status;
+        document.getElementById('updateNotes').value = notes;
+        toggleExcuseField();
+        new bootstrap.Modal(document.getElementById('updateStatusModal')).show();
+    }
+
+    function toggleExcuseField() {
+        const status = document.getElementById('updateStatusSelect').value;
+        document.getElementById('excuseField').classList.toggle('d-none', status !== 'رافض بعذر' && status !== 'رافض بدون عذر');
+    }
+
+    function confirmStatusUpdate() {
+        const kid = document.getElementById('updateKid').value;
+        const status = document.getElementById('updateStatusSelect').value;
+        const notes = document.getElementById('updateNotes').value;
+
+        if (status === 'مفعل') {
+            db.run("UPDATE khawatir SET status = 'مفعل' WHERE id = ?", [kid]);
+        } else {
+            db.run("UPDATE khawatir SET status = ?, notes = ? WHERE id = ?", [status, notes, kid]);
+        }
+        
+        saveDB();
+        bootstrap.Modal.getInstance(document.getElementById('updateStatusModal')).hide();
+        renderStudentList();
+    }
+
+    // --- واتساب ---
+    function copyCollectiveReport(type) {
+        let title = "";
+        let filterStatus = "";
+        if (type === 'rejected') { title = "🚫 تقرير الرافضين للخواطر"; filterStatus = "رافض"; }
+        else if (type === 'done') { title = "✅ تقرير المنجزين للخواطر"; filterStatus = "تم الأداء"; }
+        else { title = "⏳ تقرير المنتظرين للخواطر"; filterStatus = "قيد الانتظار"; }
+
+        let sql = `
+            SELECT s.name, s.room, k.status, k.notes, k.prayer, k.k_date
+            FROM students s
+            JOIN khawatir k ON s.id = k.s_id
+            WHERE k.status LIKE '%${filterStatus}%'
+            ORDER BY s.room ASC
+        `;
+        
+        const res = db.exec(sql);
+        if (!res.length || !res[0].values.length) {
+            return alert("لا توجد بيانات لهذا التقرير حالياً.");
+        }
+
+        let text = `*${title}*\n`;
+        text += `📅 التاريخ: ${new Date().toLocaleDateString('ar-SA')}\n`;
+        text += `--------------------------\n`;
+
+        res[0].values.forEach(v => {
+            text += `👤 ${v[0]} (غ ${v[1]})\n`;
+            text += `📍 الحالة: ${v[2]}\n`;
+            if (v[3]) text += `📝 ملاحظة: ${v[3]}\n`;
+            if (v[4]) text += `⏰ الموعد: ${v[4]} | ${v[5]}\n`;
+            text += `---\n`;
+        });
+
+        text += `\nتم الإرسال عبر نظام المتابعة المطور.`;
+        
+        navigator.clipboard.writeText(text).then(() => {
+            alert("✅ تم نسخ التقرير الجماعي بنجاح! يمكنك الآن لصقه في واتساب.");
+        });
+    }
+
+    function sendWhatsApp(phone, name, status, prayer, date) {
+        if (!phone || phone.trim() === "") return alert(`يرجى إضافة رقم الهاتف للطالب ${name} من صفحة الإدارة أولاً.`);
+        
+        const cleanPhone = phone.replace(/\D/g, '');
+        let message = "";
+
+        if (status === 'لم يكلف') {
+            message = `السلام عليكم،\nالابن العزيز ${name}، نود إبلاغك بأنه سيتم تكليفك بخاطرة قريباً. يرجى الاستعداد.`;
+        } else if (status === 'قيد الانتظار') {
+            message = `*تذكير بموعد خاطرة*\nالابن: ${name}\nالموعد: ${date}\nصلاة: ${prayer}\nنرجو منكم التحضير الجيد، وبالتوفيق.`;
+        } else if (status === 'تم الأداء') {
+            message = `*تهنئة بأداء خاطرة*\nنبارك للابن: ${name} أداءه المتميز في خاطرة صلاة ${prayer} ليوم ${date}. بارك الله فيك.`;
+        } else {
+            message = `السلام عليكم، بخصوص تكليف الخاطرة للطالب ${name} بتاريخ ${date}، الحالة الحالية: ${status}.`;
+        }
+
+        window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+    }
+
+    // --- النسخ الاحتياطي والمزامنة ---
+    function exportBackup() {
+        const data = localStorage.getItem(DB_KEY);
+        if (!data) return alert("لا توجد بيانات لتصديرها.");
+        const blob = new Blob([data], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `khawatir_backup_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+    }
+
+    function importBackup(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const content = e.target.result;
+                JSON.parse(content); // التحقق من صحة الملف
+                localStorage.setItem(DB_KEY, content);
+                alert("✅ تم استيراد البيانات بنجاح! سيتم تحديث الصفحة.");
+                location.reload();
+            } catch(err) {
+                alert("❌ خطأ: الملف المختار غير صالح.");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // --- التحليل البياني ---
+    function renderCharts() {
+        if (charts.pie) charts.pie.destroy();
+        if (charts.bar) charts.bar.destroy();
+
+        // 1. دائرة الحالات
+        const resStatus = db.exec("SELECT status, COUNT(*) FROM khawatir WHERE status != 'مفعل' GROUP BY status");
+        if (resStatus.length) {
+            const labels = resStatus[0].values.map(v => v[0]);
+            const data = resStatus[0].values.map(v => v[1]);
+            charts.pie = new Chart(document.getElementById('statusPieChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{ data: data, backgroundColor: ['#2ecc71', '#f1c40f', '#95a5a6', '#e74c3c'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // 2. الطلاب الأكثر إلقاءً
+        const resTop = db.exec(`
+            SELECT s.name, COUNT(*) as count 
+            FROM khawatir k JOIN students s ON k.s_id = s.id 
+            WHERE k.status = 'تم الأداء' 
+            GROUP BY s.id ORDER BY count DESC LIMIT 5
+        `);
+        if (resTop.length) {
+            charts.bar = new Chart(document.getElementById('topStudentsChart'), {
+                type: 'bar',
+                data: {
+                    labels: resTop[0].values.map(v => v[0]),
+                    datasets: [{ label: 'عدد الخواطر', data: resTop[0].values.map(v => v[1]), backgroundColor: '#6a11cb' }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // 3. جدول الغرف
+        const resRoomStats = db.exec(`
+            SELECT s.room, 
+            COUNT(s.id) as total,
+            COUNT(CASE WHEN k.status = 'تم الأداء' THEN 1 END) as done,
+            COUNT(CASE WHEN k.status = 'قيد الانتظار' THEN 1 END) as pending,
+            COUNT(CASE WHEN k.status LIKE 'رافض%' THEN 1 END) as rejected
+            FROM students s
+            LEFT JOIN khawatir k ON s.id = k.s_id AND k.status != 'مفعل'
+            GROUP BY s.room
+        `);
+        const table = document.getElementById('roomStatsTable');
+        if (resRoomStats.length) {
+            table.innerHTML = resRoomStats[0].values.map(v => {
+                const percent = v[1] > 0 ? Math.round((v[2] / v[1]) * 100) : 0;
+                return `
+                    <tr>
+                        <td><b>${v[0]}</b></td>
+                        <td>${v[1]}</td>
+                        <td><span class="text-success">${v[2]}</span></td>
+                        <td><span class="text-warning">${v[3]}</span></td>
+                        <td><span class="text-danger">${v[4]}</span></td>
+                        <td>
+                            <div class="progress" style="height: 10px;">
+                                <div class="progress-bar bg-success" style="width: ${percent}%"></div>
+                            </div>
+                            <small>${percent}%</small>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+
+    init();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
