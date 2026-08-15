@@ -308,7 +308,8 @@
                 FROM attendance a 
                 JOIN students s ON a.s_id = s.id 
                 WHERE ${filter}
-                ORDER BY a.date DESC, s.name ASC, a.prayer ASC
+             ORDER BY a.date DESC, CAST(s.room AS INTEGER) ASC, s.name ASC, a.prayer ASC
+
             `;
             const res = db.exec(sql);
 
