@@ -38,8 +38,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
             <h3 class="fw-bold text-primary">📊 لوحة التحكم والتقارير</h3>
             <div class="d-flex gap-2">
-                <a href="index.html" class="btn btn-sm btn-outline-primary rounded-pill px-3">🏠 الرئيسية</a>
-                <button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="window.close()">خروج</button>
+                <button class="btn btn-sm btn-outline-danger" onclick="window.close()">خروج</button>
             </div>
         </div>
 
@@ -173,29 +172,6 @@
                                 <div class="text-center text-muted p-4 small">اختر غرفة من الأعلى لعرض طلابها وإضافة أرقامهم</div>
                             </div>
                             <button class="btn btn-primary w-100 mt-2 fw-bold" onclick="saveAllPhones()">💾 حفظ التعديلات الحالية</button>
-                        </div>
-                    </div>
-                    
-                    <!-- قسم تصدير الأسماء الجديد -->
-                    <div class="col-12 mt-3">
-                        <div class="card p-3 shadow-sm border-0 bg-light">
-                            <h6 class="fw-bold mb-3 text-primary">📥 تصدير قوائم الأسماء للطباعة</h6>
-                            <div class="row g-2 align-items-center">
-                                <div class="col-md-4">
-                                    <label class="x-small fw-bold mb-1 d-block">خيارات التنسيق:</label>
-                                    <select id="exportOption" class="form-select form-select-sm">
-                                        <option value="withRoom">الاسم مع رقم الغرفة (مرتب رقمياً)</option>
-                                        <option value="nameOnly">الاسم فقط</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6 d-flex gap-2 align-items-end">
-                                    <button class="btn btn-sm btn-success px-4 rounded-pill fw-bold" onclick="exportStudents('excel')">تصدير Excel احترافي 📊</button>
-                                    <button class="btn btn-sm btn-primary px-4 rounded-pill fw-bold" onclick="exportStudents('word')">تصدير Word منسق 📝</button>
-                                </div>
-                            </div>
-                            <div class="mt-2 x-small text-muted">
-                                * ملاحظة: يتم ترتيب الطلاب تلقائياً حسب أرقام الغرف لسهولة التوزيع.
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -332,7 +308,8 @@
                 FROM attendance a 
                 JOIN students s ON a.s_id = s.id 
                 WHERE ${filter}
-                ORDER BY a.date DESC, s.name ASC, a.prayer ASC
+             ORDER BY a.date DESC, CAST(s.room AS INTEGER) ASC, s.name ASC, a.prayer ASC
+
             `;
             const res = db.exec(sql);
 
@@ -634,76 +611,6 @@
             }
         };
         reader.readAsText(file);
-    }
-
-    // دالة تصدير الأسماء المطورة
-    function exportStudents(format) {
-        const option = document.getElementById('exportOption').value;
-        const res = db.exec("SELECT name, room FROM students ORDER BY CAST(room AS INTEGER) ASC, name ASC");
-        
-        if (!res.length || !res[0].values.length) return alert("لا يوجد طلاب لتصديرهم");
-
-        if (format === 'excel') {
-            let rows = [];
-            if (option === 'withRoom') {
-                rows.push(["الاسم الكامل", "رقم الغرفة"]);
-                res[0].values.forEach(v => rows.push([v[0], v[1]]));
-            } else {
-                rows.push(["الاسم الكامل"]);
-                res[0].values.forEach(v => rows.push([v[0]]));
-            }
-            
-            const ws = XLSX.utils.aoa_to_sheet(rows);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "قائمة الطلاب");
-            XLSX.writeFile(wb, `قائمة_الطلاب_${new Date().toLocaleDateString('ar-SA')}.xlsx`);
-        } else {
-            // تصدير وورد منسق بجدول
-            let tableHtml = `
-                <html dir="rtl" lang="ar">
-                <head><meta charset="utf-8">
-                <style>
-                    body { font-family: 'Arial', sans-serif; }
-                    .header { text-align: center; color: #2c3e50; margin-bottom: 20px; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; }
-                    table { border-collapse: collapse; width: 100%; }
-                    th, td { border: 1px solid #000; padding: 10px; text-align: right; }
-                    th { background-color: #f2f2f2; color: #2c3e50; font-weight: bold; }
-                    .footer { margin-top: 20px; font-size: 10px; text-align: center; color: #7f8c8d; }
-                </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <h1>قائمة أسماء الطلاب</h1>
-                        <p>تاريخ التصدير: ${new Date().toLocaleDateString('ar-SA')}</p>
-                    </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="width: 70%;">الاسم الكامل</th>
-                                ${option === 'withRoom' ? '<th style="width: 30%;">رقم الغرفة</th>' : ''}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${res[0].values.map(v => `
-                                <tr>
-                                    <td>${v[0]}</td>
-                                    ${option === 'withRoom' ? `<td>${v[1]}</td>` : ''}
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                    <div class="footer">تم إنشاء هذا الملف عبر نظام المتابعة المطور</div>
-                </body>
-                </html>
-            `;
-
-            const blob = new Blob(['\ufeff', tableHtml], { type: 'application/msword' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `قائمة_الطلاب_${new Date().toLocaleDateString('ar-SA')}.doc`;
-            a.click();
-        }
     }
 
     init();

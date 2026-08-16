@@ -274,3 +274,4 @@ function setPrayer() {
     else if (h >= 18 && h < 20) s.value = "المغرب";
     else s.value = "العشاء";
 }
+
