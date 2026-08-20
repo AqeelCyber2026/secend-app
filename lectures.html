@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root { --lecture-primary: #2980b9; --lecture-secondary: #3498db; --bg: #f0f2f5; }
         body { background-color: var(--bg); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow-x: hidden; }
@@ -62,6 +64,9 @@
         </li>
         <li class="nav-item">
             <button class="nav-link" data-bs-toggle="pill" data-bs-target="#view-reports" onclick="loadLecturesList()">📊 التقارير</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#view-cards" onclick="renderStudentCards()">🎫 بطاقات الطلاب</button>
         </li>
         <li class="nav-item">
             <button class="nav-link" data-bs-toggle="pill" data-bs-target="#view-setup">⚙️ الإعدادات</button>
@@ -132,6 +137,18 @@
             </div>
         </div>
 
+        <!-- قسم بطاقات الطلاب -->
+        <div class="tab-pane fade" id="view-cards">
+            <div class="card p-3 mb-3 border-0 shadow-sm">
+                <div class="mb-3">
+                    <input type="text" id="cardSearchInput" class="form-control rounded-pill border-primary" placeholder="🔍 ابحث عن طالب لعرض بطاقته وإحصائياته..." oninput="renderStudentCards()">
+                </div>
+                <div id="studentCardsContainer" class="row g-3" style="max-height: 60vh; overflow-y: auto;">
+                    <!-- سيتم تعبئة البطاقات هنا -->
+                </div>
+            </div>
+        </div>
+
         <!-- قسم الإعدادات -->
         <div class="tab-pane fade" id="view-setup">
             <div class="row g-3">
@@ -187,11 +204,43 @@
     </div>
 </div>
 
+<!-- مودال عرض QR Code والإحصائيات -->
+<div class="modal fade" id="qrModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border-radius: 20px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">📊 الملف الشخصي للطالب</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-5 text-center border-start">
+                        <div id="qrcode" class="d-flex justify-content-center mb-3 p-2 bg-white rounded shadow-sm"></div>
+                        <h5 id="qrStudentName" class="fw-bold mb-1"></h5>
+                        <p id="qrStudentRoom" class="badge bg-secondary rounded-pill mb-3"></p>
+                        <button class="btn btn-success w-100 rounded-pill fw-bold mb-2 shadow-sm" onclick="sendQRWhatsApp()">إرسال الكود للواتساب 📱</button>
+                        <p class="x-small text-muted">استخدم هذا الكود للتحضير السريع بالكاميرا</p>
+                    </div>
+                    <div class="col-md-7">
+                        <h6 class="fw-bold mb-3 text-primary border-bottom pb-2">📈 إحصائيات حضور المحاضرات</h6>
+                        <div style="height: 220px;">
+                            <canvas id="individualStudentChart"></canvas>
+                        </div>
+                        <div id="studentStatsSummary" class="mt-3 text-center small fw-bold p-2 bg-light rounded-pill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     let db;
     const DB_KEY = "prayer_pro_v8";
     let allStudents = [];
     let html5QrCode = null;
+    let charts = {};
+    let currentQRData = null;
 
     async function init() {
         const SQL = await initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${f}` });
@@ -485,6 +534,110 @@
         a.href = URL.createObjectURL(blob);
         a.download = `تقرير_محاضرة_${new Date().toLocaleDateString('ar-SA')}.doc`;
         a.click();
+    }
+
+    // --- وظائف بطاقات الطلاب و QR Code في المحاضرات ---
+    function renderStudentCards() {
+        const search = document.getElementById('cardSearchInput').value.toLowerCase();
+        const res = db.exec("SELECT id, name, room, phone FROM students ORDER BY CAST(room AS INTEGER) ASC, name ASC");
+        const container = document.getElementById('studentCardsContainer');
+        
+        if (res.length && res[0].values.length) {
+            const filtered = res[0].values.filter(v => v[1].toLowerCase().includes(search) || v[2].toString().includes(search));
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="text-center p-5 text-muted">لا توجد نتائج مطابقة للبحث</div>';
+                return;
+            }
+            container.innerHTML = filtered.map(v => `
+                <div class="col-md-4 col-sm-6">
+                    <div class="card p-3 text-center shadow-sm border-0 h-100" style="background: #ffffff; border-radius: 15px; border-top: 4px solid #2980b9;">
+                        <div class="mb-2" style="font-size: 30px;">👤</div>
+                        <h6 class="fw-bold mb-1 text-truncate">${v[1]}</h6>
+                        <span class="badge bg-light text-dark mb-3 border">غرفة: ${v[2]}</span>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-sm btn-primary rounded-pill fw-bold" onclick="showQR(${v[0]}, '${v[1]}', '${v[3]||''}', '${v[2]}')">🎫 الكود والإحصائيات</button>
+                            <button class="btn btn-sm btn-outline-success rounded-pill fw-bold" onclick="sendQRDirect(${v[0]}, '${v[1]}', '${v[3]||''}')">📱 إرسال سريع</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    function showQR(id, name, phone, room) {
+        document.getElementById('qrcode').innerHTML = "";
+        document.getElementById('qrStudentName').innerText = name;
+        document.getElementById('qrStudentRoom').innerText = "غرفة: " + room;
+        currentQRData = { id, name, phone };
+        
+        new QRCode(document.getElementById("qrcode"), {
+            text: `STUDENT_ID:${id}`,
+            width: 180,
+            height: 180,
+            colorDark : "#2c3e50",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
+        
+        renderIndividualChart(id);
+        new bootstrap.Modal(document.getElementById('qrModal')).show();
+    }
+
+    function renderIndividualChart(sid) {
+        const res = db.exec(`
+            SELECT status, COUNT(*) as count 
+            FROM lecture_attendance 
+            WHERE s_id = ? 
+            GROUP BY status
+        `, [sid]);
+
+        let stats = { 'حاضر': 0, 'غائب': 0, 'بعذر': 0 };
+        if (res.length) {
+            res[0].values.forEach(v => { stats[v[0]] = v[1]; });
+        }
+
+        const totalLecturesRes = db.exec("SELECT COUNT(*) FROM lectures");
+        const totalLectures = (totalLecturesRes.length && totalLecturesRes[0].values.length) ? totalLecturesRes[0].values[0][0] : 0;
+        const recordedCount = stats['حاضر'] + stats['بعذر'];
+        stats['غائب'] = Math.max(0, totalLectures - recordedCount);
+
+        const ctx = document.getElementById('individualStudentChart').getContext('2d');
+        if (charts.individual) charts.individual.destroy();
+        
+        charts.individual = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['حاضر', 'غائب', 'بعذر'],
+                datasets: [{
+                    data: [stats['حاضر'], stats['غائب'], stats['بعذر']],
+                    backgroundColor: ['#27ae60', '#e74c3c', '#f1c40f'],
+                    borderWidth: 0
+                }]
+            },
+            options: { 
+                maintainAspectRatio: false, 
+                plugins: { legend: { position: 'bottom' } },
+                cutout: '70%'
+            }
+        });
+
+        document.getElementById('studentStatsSummary').innerHTML = `
+            <span class="text-success">✅ حاضر: ${stats['حاضر']}</span> | 
+            <span class="text-danger">❌ غائب: ${stats['غائب']}</span> | 
+            <span class="text-warning">📝 بعذر: ${stats['بعذر']}</span>
+        `;
+    }
+
+    function sendQRDirect(id, name, phone) {
+        if (!phone) return alert("⚠️ يرجى إضافة رقم الهاتف أولاً من تبويب الإدارة");
+        const msg = `السلام عليكم يا ${name}،\nهذا هو كود البصمة الرقمية الخاص بك للتحضير في المحاضرات:\n(STUDENT_ID:${id})`;
+        window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function sendQRWhatsApp() {
+        if (!currentQRData.phone) return alert("يرجى إضافة رقم الهاتف أولاً");
+        const msg = `السلام عليكم يا ${currentQRData.name}،\nهذا هو كود البصمة الرقمية الخاص بك للتحضير في المحاضرات. يرجى الاحتفاظ به:\n(STUDENT_ID:${currentQRData.id})`;
+        window.open(`https://wa.me/${currentQRData.phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
     init();
