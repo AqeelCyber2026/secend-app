@@ -165,26 +165,14 @@
                     </div>
                     <div class="col-md-6">
                         <div class="card p-3 h-100">
-                            <h6 class="fw-bold mb-3">👤 إدارة الطلاب</h6>
-                            <div class="d-flex gap-2 mb-3">
-                                <button id="btnEditMode" class="btn btn-sm btn-primary flex-grow-1 rounded-pill fw-bold" onclick="switchAdminMode('edit')">📝 وضع التعديل</button>
-                                <button id="btnDeleteMode" class="btn btn-sm btn-outline-danger flex-grow-1 rounded-pill fw-bold" onclick="switchAdminMode('delete')">🗑️ وضع الحذف</button>
+                            <h6 class="fw-bold mb-3">📱 تحديث أرقام الهواتف حسب الغرف</h6>
+                            <div id="roomButtonsContainer" class="d-flex flex-wrap gap-2 mb-3 border-bottom pb-2">
+                                <!-- أزرار الغرف ستظهر هنا -->
                             </div>
-                            
-                            <div id="adminControls">
-                                <div id="roomButtonsContainer" class="d-flex flex-wrap gap-2 mb-3 border-bottom pb-2">
-                                    <!-- أزرار الغرف ستظهر هنا -->
-                                </div>
-                                <div class="mb-2">
-                                    <input type="text" id="adminStudentSearch" class="form-control form-control-sm mb-2" placeholder="🔍 بحث سريع..." oninput="renderPhoneList('search')">
-                                </div>
-                                <div id="phoneUpdateList" style="max-height: 300px; overflow-y: auto;" class="mb-2 border p-2 rounded bg-light">
-                                    <div class="text-center text-muted p-4 small">اختر غرفة أو ابحث للبدء</div>
-                                </div>
-                                <div id="saveBtnContainer">
-                                    <button class="btn btn-primary w-100 mt-2 fw-bold" onclick="saveAllStudentEdits()">💾 حفظ التعديلات</button>
-                                </div>
+                            <div id="phoneUpdateList" style="max-height: 250px; overflow-y: auto;" class="mb-2 border p-2 rounded bg-light">
+                                <div class="text-center text-muted p-4 small">اختر غرفة من الأعلى لعرض طلابها وإضافة أرقامهم</div>
                             </div>
+                            <button class="btn btn-primary w-100 mt-2 fw-bold" onclick="saveAllPhones()">💾 حفظ التعديلات الحالية</button>
                         </div>
                     </div>
                     
@@ -219,7 +207,6 @@
 <script>
     let db;
     let charts = {};
-    let adminMode = 'edit';
     const DB_KEY = "prayer_pro_v8";
 
     // 1. تهيئة قاعدة البيانات
@@ -587,111 +574,39 @@
         } catch (e) { console.error(e); }
     }
 
-    function switchAdminMode(mode) {
-        adminMode = mode;
-        const btnEdit = document.getElementById('btnEditMode');
-        const btnDelete = document.getElementById('btnDeleteMode');
-        const saveContainer = document.getElementById('saveBtnContainer');
-
-        if (mode === 'edit') {
-            btnEdit.className = "btn btn-sm btn-primary flex-grow-1 rounded-pill fw-bold";
-            btnDelete.className = "btn btn-sm btn-outline-danger flex-grow-1 rounded-pill fw-bold";
-            saveContainer.style.display = 'block';
-        } else {
-            btnEdit.className = "btn btn-sm btn-outline-primary flex-grow-1 rounded-pill fw-bold";
-            btnDelete.className = "btn btn-sm btn-danger flex-grow-1 rounded-pill fw-bold";
-            saveContainer.style.display = 'none';
-        }
-        renderPhoneList('all');
-    }
-
-    function renderPhoneList(mode = 'all') {
+    function renderPhoneList(room = 'all') {
         let sql = "SELECT id, name, phone, room FROM students ";
-        const searchText = document.getElementById('adminStudentSearch').value.toLowerCase();
-
-        if (mode === 'search' && searchText) {
-            sql += ` WHERE name LIKE '%${searchText}%' OR room LIKE '%${searchText}%' `;
-        } else if (mode !== 'all' && mode !== 'search') {
-            sql += ` WHERE room = '${mode}' `;
+        if (room !== 'all') {
+            sql += ` WHERE room = '${room}' `;
         }
-        sql += " ORDER BY CAST(room AS INTEGER) ASC, name ASC";
+        sql += " ORDER BY name ASC";
         
         const res = db.exec(sql);
         const div = document.getElementById('phoneUpdateList');
         
         if (res.length && res[0].values.length) {
-            if (adminMode === 'edit') {
-                div.innerHTML = `
-                    <table class="table table-sm table-borderless align-middle mb-0">
-                        <thead class="x-small text-muted border-bottom">
-                            <tr>
-                                <th>الاسم</th>
-                                <th style="width: 70px;">الغرفة</th>
-                                <th>الجوال</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${res[0].values.map(v => `
-                                <tr class="border-bottom">
-                                    <td><input type="text" class="form-control form-control-sm border-0 fw-bold edit-name" data-id="${v[0]}" value="${v[1]}"></td>
-                                    <td><input type="text" class="form-control form-control-sm border-0 text-center edit-room" data-id="${v[0]}" value="${v[3]}"></td>
-                                    <td><input type="text" class="form-control form-control-sm border-0 edit-phone" data-id="${v[0]}" value="${v[2] || ''}" placeholder="9665xxx"></td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>`;
-            } else {
-                div.innerHTML = `
-                    <table class="table table-sm table-borderless align-middle mb-0">
-                        <thead class="x-small text-muted border-bottom">
-                            <tr>
-                                <th>الاسم</th>
-                                <th>الغرفة</th>
-                                <th>الإجراء</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${res[0].values.map(v => `
-                                <tr class="border-bottom">
-                                    <td class="fw-bold small">${v[1]}</td>
-                                    <td class="small">${v[3]}</td>
-                                    <td><button class="btn btn-sm btn-danger rounded-pill px-3 py-0" style="font-size:10px" onclick="deleteStudentAdmin(${v[0]})">حذف 🗑️</button></td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>`;
-            }
+            div.innerHTML = res[0].values.map(v => `
+                <div class="d-flex align-items-center mb-2 gap-2 border-bottom pb-1 bg-white p-2 rounded">
+                    <div class="flex-grow-1">
+                        <div class="fw-bold small">${v[1]}</div>
+                        <div class="x-small text-muted" style="font-size:10px">غرفة: ${v[3]}</div>
+                    </div>
+                    <input type="text" class="form-control form-control-sm w-50 phone-input" data-id="${v[0]}" value="${v[2] || ''}" placeholder="9665xxx">
+                </div>
+            `).join('');
         } else {
-            div.innerHTML = '<div class="text-center p-4 text-muted">لا توجد نتائج</div>';
+            div.innerHTML = '<div class="text-center p-4 text-muted">لا يوجد طلاب في هذه الغرفة</div>';
         }
     }
 
-    function deleteStudentAdmin(id) {
-        if (confirm("⚠️ هل أنت متأكد من حذف هذا الطالب وجميع سجلاته نهائياً؟")) {
-            db.run("DELETE FROM attendance WHERE s_id = ?", [id]);
-            db.run("DELETE FROM khawatir WHERE s_id = ?", [id]);
-            db.run("DELETE FROM students WHERE id = ?", [id]);
-            saveDB();
-            loadStudentList();
-            renderRoomButtons();
-            renderPhoneList('all');
-            alert("✅ تم حذف الطالب بنجاح.");
-        }
-    }
-
-    function saveAllStudentEdits() {
-        const rows = document.querySelectorAll('#phoneUpdateList tbody tr');
-        rows.forEach(row => {
-            const id = row.querySelector('.edit-name').getAttribute('data-id');
-            const name = row.querySelector('.edit-name').value;
-            const room = row.querySelector('.edit-room').value;
-            const phone = row.querySelector('.edit-phone').value;
-            db.run("UPDATE students SET name = ?, room = ?, phone = ? WHERE id = ?", [name, room, phone, id]);
+    function saveAllPhones() {
+        document.querySelectorAll('.phone-input').forEach(input => {
+            const id = input.getAttribute('data-id');
+            const val = input.value;
+            db.run("UPDATE students SET phone = ? WHERE id = ?", [val, id]);
         });
         saveDB();
-        loadStudentList(); // تحديث قائمة البحث في التقارير
-        renderRoomButtons(); // تحديث أزرار الغرف
-        alert("✅ تم حفظ جميع التعديلات بنجاح! تم نقل الطلاب للغرف الجديدة وتحديث أسمائهم.");
+        alert("تم حفظ جميع الأرقام بنجاح");
     }
 
     function exportBackup() {
