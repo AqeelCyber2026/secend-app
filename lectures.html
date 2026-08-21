@@ -99,6 +99,12 @@
                             إغلاق الكاميرا
                         </button>
                     </div>
+                    
+                    <div class="input-group mb-3">
+                        <input type="number" id="manualIdInput" class="form-control rounded-start-pill border-primary text-center" 
+                               placeholder="أدخل كود الطالب يدوياً..." onkeypress="if(event.key==='Enter') manualAttend()">
+                        <button class="btn btn-primary rounded-end-pill px-3" onclick="manualAttend()">تحضير ✅</button>
+                    </div>
 
                     <div id="reader" class="mb-3 rounded-3 overflow-hidden border" style="width: 100%; display:none;"></div>
 
@@ -334,13 +340,28 @@
         // التنسيق المتوقع: STUDENT_ID:123
         if (decodedText.startsWith("STUDENT_ID:")) {
             const sid = decodedText.split(":")[1];
-            const student = allStudents.find(s => s.id == sid);
-            if (student) {
-                confirmAttendance(student.id, student.name, student.room);
-                // إيقاف مؤقت للمسح لتجنب التكرار السريع
-                html5QrCode.pause();
-                setTimeout(() => html5QrCode.resume(), 4000);
-            }
+            processAttendanceById(sid);
+            // إيقاف مؤقت للمسح لتجنب التكرار السريع
+            html5QrCode.pause();
+            setTimeout(() => html5QrCode.resume(), 4000);
+        }
+    }
+
+    function manualAttend() {
+        const sidInput = document.getElementById('manualIdInput');
+        const sid = sidInput.value.trim();
+        if (!sid) return;
+        processAttendanceById(sid);
+        sidInput.value = "";
+        sidInput.focus();
+    }
+
+    function processAttendanceById(sid) {
+        const student = allStudents.find(s => s.id == sid);
+        if (student) {
+            confirmAttendance(student.id, student.name, student.room);
+        } else {
+            alert("⚠️ عذراً، لم يتم العثور على طالب بهذا الكود!");
         }
     }
 
