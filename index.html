@@ -3,31 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>نظام المتابعة Pro - المطور</title>
+    <title>نظام المتابعة Pro - لوحة التحكم</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #1a535c; --bg: #f7fff7; --card-bg: #ffffff; --text: #333333; }
+        :root { --primary: #1a535c; --bg: #f7fff7; --card-bg: #ffffff; --text: #333333; --accent: #4ecdc4; }
         body.dark-mode { --primary: #4ecdc4; --bg: #1a1a1a; --card-bg: #2d2d2d; --text: #f0f0f0; }
-        body { background-color: var(--bg  ); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; transition: 0.3s; user-select: none; }
+        body { background-color: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; transition: 0.3s; user-select: none; }
         .container { max-width: 950px; margin-top: 20px; padding-bottom: 50px; }
-        .card { background-color: var(--card-bg); color: var(--text); border-radius: 15px; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .nav-pills .nav-link { cursor: pointer; font-weight: bold; color: var(--primary); border-radius: 25px; }
-        .nav-pills .nav-link.active { background-color: var(--primary) !important; color: white !important; }
-        .room-card { cursor: pointer; background: var(--card-bg); text-align: center; padding: 20px; border-radius: 15px; border: 1px solid #44444433; transition: 0.2s; }
+        .card { background-color: var(--card-bg); color: var(--text); border-radius: 15px; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .nav-pills .nav-link { cursor: pointer; font-weight: bold; color: var(--primary); border-radius: 25px; transition: 0.3s; }
+        .nav-pills .nav-link.active { background-color: var(--primary) !important; color: white !important; box-shadow: 0 4px 10px rgba(26, 83, 92, 0.3); }
+        .room-card { cursor: pointer; background: var(--card-bg); text-align: center; padding: 20px; border-radius: 15px; border: 1px solid #44444422; transition: 0.2s; }
+        .room-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .room-card:active { transform: scale(0.95); background: var(--primary); color: white; }
-        .bg-header { background: linear-gradient(135deg, #1a535c, #4ecdc4); color: white; border-radius: 15px; }
+        .bg-header { background: linear-gradient(135deg, #1a535c, #4ecdc4); color: white; border-radius: 15px; border: none; }
         .d-none { display: none !important; }
         #loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
         .form-control, .form-select { background-color: var(--card-bg); color: var(--text); border-color: #44444433; border-radius: 10px; }
-        .table-responsive { border-radius: 12px; border: 1px solid #dee2e6; }
-        .table thead th { background-color: #1a535c; color: white; text-align: center; font-size: 0.9rem; }
-        .prayer-cell { min-width: 80px; text-align: center; }
-        .status-badge { font-weight: bold; font-size: 0.85rem; display: block; }
-        .note-text { font-size: 0.7rem; color: #6c757d; line-height: 1.1; margin-top: 2px; }
-        body.dark-mode .table thead th { background-color: #333; }
-        body.dark-mode .table td { border-color: #444; color: #eee; }
+        .btn-round { border-radius: 50px; padding-left: 20px; padding-right: 20px; font-weight: bold; }
+        
+        /* تحسينات إضافية */
+        .quick-action-card { text-decoration: none; color: inherit; transition: 0.3s; }
+        .quick-action-card:hover { transform: translateY(-5px); }
+        .badge-count { font-size: 0.7rem; vertical-align: middle; }
     </style>
 </head>
 <body>
@@ -39,22 +39,21 @@
 
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="fw-bold m-0" style="color: var(--primary);">🕌 المتابعة Pro</h3>
-        <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="toggleDarkMode()">🌙 الوضع الليلي</button>
+        <div>
+            <h3 class="fw-bold m-0" style="color: var(--primary);">🕌 المتابعة Pro</h3>
+            <p class="text-muted small mb-0">لوحة التحكم والتحضير</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="toggleDarkMode()">🌙</button>
+        </div>
     </div>
     
     <ul class="nav nav-pills mb-4 justify-content-center bg-white p-2 rounded-pill shadow-sm">
-        <li class="nav-item"><a class="nav-link active" id="btn-rooms" onclick="switchTab('rooms')">🏠 الجولات</a></li>
-        <li class="nav-item"><a class="nav-link" href="khawatir.html" onclick="switchTab('khawatir')">🎤 الخواطر</a></li>
-        <li class="nav-item">
-    <a href="lectures.html" class="nav-link rounded-pill" style="background-color: #2980b9; color: white; margin-right: 5px;">🎓 تحضير المحاضرات</a>
-</li>
-
-        <li class="nav-item">
-    <a class="nav-link bg-warning text-dark ms-2" href="reports.html" target="_blank">🚀 تقارير متقدمة</a>
-</li>
-
-        <li class="nav-item"><a class="nav-link" id="btn-manage" onclick="switchTab('manage')">⚙️ الإدارة</a></li>
+        <li class="nav-item"><a class="nav-link active" id="tab-btn-rooms" onclick="switchTab('rooms')">🏠 الجولات</a></li>
+        <li class="nav-item"><a class="nav-link" href="khawatir.html">🎤 الخواطر</a></li>
+        <li class="nav-item"><a class="nav-link" href="lectures.html">🎓 المحاضرات</a></li>
+        <li class="nav-item"><a class="nav-link bg-warning text-dark ms-2" href="advanced_report_dashboard.html">🚀 التقارير</a></li>
+        <li class="nav-item"><a class="nav-link" id="tab-btn-manage" onclick="switchTab('manage')">⚙️ الإدارة</a></li>
     </ul>
 
     <!-- الجولات -->
@@ -67,15 +66,17 @@
             </div>
         </div>
         <div id="roomsGrid" class="row g-3"></div>
+        
+        <!-- تفاصيل الجولة -->
         <div id="attendanceDetail" class="mt-4 d-none">
-            <div class="card p-4">
-                <div class="d-flex justify-content-between mb-3">
-                    <h5 id="roomTitle" class="fw-bold text-primary"></h5>
-                    <button class="btn btn-sm btn-light border rounded-pill" onclick="closeSubView('rooms')">إغلاق</button>
+            <div class="card p-4 shadow-lg border-0">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 id="roomTitle" class="fw-bold text-primary mb-0"></h5>
+                    <button class="btn btn-sm btn-light border rounded-pill" onclick="closeSubView('rooms')">إغلاق ✖</button>
                 </div>
                 <div class="table-responsive">
                     <table class="table align-middle">
-                        <thead><tr class="small text-muted"><th>الطالب</th><th>الحالة</th><th>ملاحظة</th></tr></thead>
+                        <thead><tr class="small text-muted text-center"><th>الطالب</th><th>الحالة</th><th>ملاحظة</th></tr></thead>
                         <tbody id="attendanceList"></tbody>
                     </table>
                 </div>
@@ -84,75 +85,125 @@
         </div>
     </div>
 
-    <!-- الخواطر -->
-    <div id="view-khawatir" class="content-view d-none">
-        <div class="card p-4 mb-4 text-white shadow-sm" style="background: linear-gradient(135deg, #6a11cb, #2575fc);">
-            <h6 class="m-0">🎤 إدارة تكاليف الخواطر</h6>
-        </div>
-        <div id="khawatirRoomsGrid" class="row g-3"></div>
-        <div id="khawatirDetail" class="mt-4 d-none">
-            <div class="card p-4">
-                <div class="d-flex justify-content-between mb-3">
-                    <h5 id="khawatirRoomTitle" class="fw-bold" style="color: #6a11cb;"></h5>
-                    <button class="btn btn-sm btn-light border rounded-pill" onclick="closeSubView('khawatir')">إغلاق</button>
-                </div>
-                <div class="table-responsive">
-                    <table class="table align-middle">
-                        <thead><tr class="small text-muted"><th>الطالب</th><th>التكليف</th><th>الحالة</th><th>إجراء</th></tr></thead>
-                        <tbody id="khawatirList"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- التقارير -->
-    <div id="view-reports" class="content-view d-none">
-        <div class="card p-4 mb-4 shadow-sm">
-            <h6 class="fw-bold mb-3">📈 إحصائيات الحضور</h6>
-            <div style="height: 200px;"><canvas id="statsChart"></canvas></div>
-        </div>
-        <div class="card p-4 shadow-sm">
-            <div class="row g-2 mb-3">
-                <div class="col-6"><select id="repTarget" class="form-select" onchange="toggleRepName()"><option value="all">الكل</option><option value="one">طالب</option></select></div>
-                <div class="col-6"><select id="repPeriod" class="form-select"><option value="today">اليوم</option><option value="week">أسبوع</option></select></div>
-                <div id="repNameDiv" class="col-12 d-none"><input type="text" id="repName" class="form-control" placeholder="اسم الطالب..."></div>
-            </div>
-            <button class="btn btn-info w-100 text-white fw-bold rounded-pill" onclick="generateFullReport()">🚀 عرض التقرير</button>
-            <div id="repArea" class="mt-4 d-none">
-                <button class="btn btn-dark btn-sm mb-3 rounded-pill px-3" onclick="copyToClipboard()">📋 نسخ للواتساب</button>
-                <div id="repTable"></div>
-            </div>
-        </div>
-    </div>
-    
-
-    <!-- الإدارة -->
+    <!-- الإدارة المتقدمة -->
     <div id="view-manage" class="content-view d-none">
-        <div class="card p-4 mb-3 shadow-sm">
-            <h6 class="fw-bold mb-3">💾 النسخ الاحتياطي</h6>
-            <div class="d-flex gap-2">
-                <button class="btn btn-outline-primary btn-sm flex-grow-1 rounded-pill" onclick="exportBackup()">📥 تصدير</button>
-                <button class="btn btn-outline-warning btn-sm flex-grow-1 rounded-pill" onclick="document.getElementById('importFile').click()">📤 استيراد</button>
-                <input type="file" id="importFile" class="d-none" onchange="importBackup(this)">
+        <div class="row g-3">
+            <!-- قسم الإضافة -->
+            <div class="col-md-6">
+                <div class="card p-4 h-100 shadow-sm border-0">
+                    <h6 class="fw-bold mb-3 text-primary">➕ إضافة طالب جديد</h6>
+                    <div class="row g-2">
+                        <div class="col-7"><input type="text" id="mName" class="form-control" placeholder="الاسم الكامل"></div>
+                        <div class="col-5"><input type="text" id="mRoom" class="form-control" placeholder="الغرفة"></div>
+                        <div class="col-12"><input type="text" id="mPhone" class="form-control" placeholder="رقم الجوال (اختياري)"></div>
+                        <button class="btn btn-success w-100 mt-3 fw-bold rounded-pill shadow-sm" onclick="addNewStudent()">إضافة للطاقم ✅</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- قسم التصدير الذكي (الميزة الجديدة) -->
+            <div class="col-md-6">
+                <div class="card p-4 h-100 shadow-sm border-0 border-top border-info border-4">
+                    <h6 class="fw-bold mb-2 text-info">📤 تصدير طلاب محددين</h6>
+                    <p class="x-small text-muted mb-3">اختر الغرف التي تريد تصدير بيانات طلابها فقط لإرسالها لمشرف آخر.</p>
+                    <div id="exportRoomList" class="d-flex flex-wrap gap-1 mb-3 border p-2 rounded bg-light" style="max-height: 100px; overflow-y: auto;">
+                        <!-- سيتم تعبئته -->
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-info text-white fw-bold rounded-pill" onclick="exportSelectedRooms()">تصدير الغرف المختارة 📄</button>
+                        <button class="btn btn-outline-secondary btn-sm rounded-pill" onclick="exportBackup()">تصدير قاعدة البيانات كاملة 💾</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- إدارة القائمة -->
+            <div class="col-12">
+                <div class="card p-4 shadow-sm border-0">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0">👤 قائمة الطلاب المسجلين</h6>
+                        <button class="btn btn-outline-warning btn-sm rounded-pill px-3" onclick="document.getElementById('importFile').click()">📥 استيراد بيانات</button>
+                        <input type="file" id="importFile" class="d-none" onchange="importBackup(this)">
+                    </div>
+                    <input type="text" id="mSearch" class="form-control mb-3 rounded-pill shadow-sm" placeholder="🔍 بحث عن طالب أو غرفة..." onkeyup="renderManageList()">
+                    <div id="mList" class="table-responsive">
+                        <!-- سيتم تعبئته -->
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <div class="card p-4 mb-3 shadow-sm">
-            <h6 class="fw-bold mb-3">➕ إضافة طالب</h6>
-            <div class="row g-2">
-                <div class="col-7"><input type="text" id="mName" class="form-control" placeholder="الاسم"></div>
-                <div class="col-5"><input type="text" id="mRoom" class="form-control" placeholder="الغرفة"></div>
-                <button class="btn btn-success w-100 mt-2 fw-bold rounded-pill" onclick="addNewStudent()">إضافة</button>
+    </div>
+</div>
+
+<!-- مودال التصدير -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3" style="font-size: 50px;">📄</div>
+                <h5 class="fw-bold">تم تجهيز ملف البيانات</h5>
+                <p class="text-muted">الملف يحتوي على بيانات الطلاب في الغرف المختارة فقط. يمكنك الآن إرساله.</p>
+                <button class="btn btn-primary w-100 rounded-pill py-2 fw-bold" data-bs-dismiss="modal">حسناً</button>
             </div>
-        </div>
-        <div class="card p-4 shadow-sm">
-            <input type="text" id="mSearch" class="form-control mb-3 rounded-pill" placeholder="بحث..." onkeyup="renderManageList()">
-            <div id="mList"></div>
         </div>
     </div>
 </div>
 
 <script src="script.js"></script>
+<script>
+    // إضافة وظيفة التصدير المختار لملف script.js أو هنا
+    function renderExportRooms() {
+        if (!db) return;
+        const res = db.exec("SELECT DISTINCT room FROM students ORDER BY CAST(room AS INTEGER) ASC");
+        const container = document.getElementById('exportRoomList');
+        if (res.length) {
+            container.innerHTML = res[0].values.map(v => `
+                <div class="form-check form-check-inline m-0 me-2">
+                    <input class="form-check-input room-export-check" type="checkbox" value="${v[0]}" id="exRoom${v[0]}">
+                    <label class="form-check-label small" for="exRoom${v[0]}">${v[0]}</label>
+                </div>
+            `).join('');
+        }
+    }
+
+    function exportSelectedRooms() {
+        const checkedRooms = Array.from(document.querySelectorAll('.room-export-check:checked')).map(c => c.value);
+        if (checkedRooms.length === 0) {
+            alert("يرجى اختيار غرفة واحدة على الأقل للتصدير.");
+            return;
+        }
+
+        const roomFilter = checkedRooms.map(r => `'${r}'`).join(',');
+        const resStudents = db.exec(`SELECT * FROM students WHERE room IN (${roomFilter})`);
+        
+        if (!resStudents.length) {
+            alert("لا يوجد طلاب في الغرف المختارة.");
+            return;
+        }
+
+        // إنشاء كائن بيانات مصغر
+        const exportData = {
+            type: "selective_export",
+            timestamp: new Date().toISOString(),
+            rooms: checkedRooms,
+            students: resStudents[0].values.map(v => ({
+                id: v[0], name: v[1], room: v[2], phone: v[3] || ""
+            }))
+        };
+
+        const blob = new Blob([JSON.stringify(exportData)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `طلاب_غرف_${checkedRooms.join('_')}.json`;
+        a.click();
+        
+        const modal = new bootstrap.Modal(document.getElementById('exportModal'));
+        modal.show();
+    }
+
+    // تعديل دالة الاستيراد في script.js لتتعامل مع التصدير المختار
+    // (سيتم دمجها في ملف script.js المحدث)
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

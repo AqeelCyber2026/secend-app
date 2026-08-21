@@ -2,33 +2,36 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <!-- تحسين العرض على الجوال ومنع التكبير العشوائي -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>نظام التقارير الاحترافي V2</title>
+    <title>نظام التقارير الاحترافي - لوحة التحكم الموحدة</title>
     
-    <!-- مكتبات التصميم والرسوم البيانية -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
     <style>
-        :root { --primary-color: #2c3e50; --secondary-color: #34495e; --accent-color: #3498db; }
-        body { background-color: #f4f7f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .main-card { background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); padding: 20px; margin-top: 20px; }
-        .nav-pills .nav-link { border-radius: 10px; font-weight: bold; margin-left: 5px; color: var(--secondary-color); background: #eee; }
-        .nav-pills .nav-link.active { background-color: var(--accent-color); color: white; }
-        .student-block { border: 1px solid #ddd; border-radius: 12px; margin-bottom: 15px; overflow: hidden; background: #fff; }
-        .student-header { background: var(--primary-color); color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; }
-        .prayer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; padding: 15px; }
-        .prayer-item { background: #f8f9fa; border: 1px solid #e9ecef; padding: 10px; border-radius: 8px; text-align: center; }
-        .status-صلى { color: #27ae60; font-weight: bold; }
-        .status-متأخر { color: #f39c12; font-weight: bold; }
-        .status-نائم { color: #e74c3c; font-weight: bold; }
-        .chart-container { position: relative; height: 300px; width: 100%; margin-bottom: 30px; }
-        .btn-whatsapp { background-color: #25D366; color: white; border: none; }
-        .btn-whatsapp:hover { background-color: #128C7E; color: white; }
-        @media (max-width: 600px) { .prayer-grid { grid-template-columns: 1fr 1fr; } }
+        :root { --primary: #2c3e50; --secondary: #34495e; --accent: #3498db; --success: #27ae60; --danger: #e74c3c; --warning: #f1c40f; }
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .main-card { background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); padding: 25px; margin-top: 20px; border: none; }
+        .nav-pills .nav-link { border-radius: 50px; font-weight: bold; margin: 0 5px; color: var(--secondary); background: #e9ecef; border: none; padding: 10px 20px; transition: 0.3s; }
+        .nav-pills .nav-link.active { background-color: var(--accent); color: white; box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3); }
+        .hub-stat-card { border-radius: 15px; border: none; transition: 0.3s; overflow: hidden; }
+        .hub-stat-card:hover { transform: translateY(-5px); }
+        .student-block { border-radius: 15px; margin-bottom: 20px; overflow: hidden; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: 1px solid #edf2f7; }
+        .student-header { background: var(--primary); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .prayer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; padding: 15px; }
+        .prayer-item { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 10px; text-align: center; }
+        .status-صلى { color: var(--success); font-weight: bold; }
+        .status-متأخر { color: var(--warning); font-weight: bold; }
+        .status-نائم { color: var(--danger); font-weight: bold; }
+        .badge-honor { background: linear-gradient(45deg, #f1c40f, #f39c12); color: white; border: none; }
+        .badge-danger-zone { background: linear-gradient(45deg, #e74c3c, #c0392b); color: white; border: none; }
+        .chart-container { position: relative; height: 250px; width: 100%; }
+        @media (max-width: 600px) { .prayer-grid { grid-template-columns: 1fr 1fr; } .nav-pills { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start !important; padding-bottom: 10px; } }
     </style>
 </head>
 <body>
@@ -36,29 +39,89 @@
 <div class="container mb-5">
     <div class="main-card">
         <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
-            <h3 class="fw-bold text-primary">📊 لوحة التحكم والتقارير</h3>
+            <div>
+                <h3 class="fw-bold text-primary mb-0">📊 لوحة التحكم الموحدة</h3>
+                <p class="text-muted small mb-0">نظام المتابعة والتقارير الذكي</p>
+            </div>
             <div class="d-flex gap-2">
-                <a href="index.html" class="btn btn-sm btn-outline-primary rounded-pill px-3">🏠 الرئيسية</a>
-                <button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="window.close()">خروج</button>
+                <a href="index.html" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold">🏠 الرئيسية</a>
+                <button class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" onclick="window.close()">خروج</button>
             </div>
         </div>
 
         <!-- التبويبات الرئيسية -->
         <ul class="nav nav-pills mb-4 justify-content-center" id="pills-tab" role="tablist">
             <li class="nav-item">
-                <button class="nav-link active" id="tab-reports" data-bs-toggle="pill" data-bs-target="#content-reports">📝 التقارير</button>
+                <button class="nav-link active" id="tab-hub" data-bs-toggle="pill" data-bs-target="#content-hub" onclick="refreshHub()">🏠 لوحة التحكم</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="tab-reports" data-bs-toggle="pill" data-bs-target="#content-reports">📝 التقارير</button>
             </li>
             <li class="nav-item">
                 <button class="nav-link" id="tab-analytics" data-bs-toggle="pill" data-bs-target="#content-analytics" onclick="renderCharts()">📈 التحليل البياني</button>
             </li>
+
             <li class="nav-item">
-                <button class="nav-link" id="tab-admin" data-bs-toggle="pill" data-bs-target="#content-admin">⚙️ الإدارة والنقل</button>
+                <button class="nav-link" id="tab-admin" data-bs-toggle="pill" data-bs-target="#content-admin" onclick="renderRoomButtons()">⚙️ الإدارة</button>
             </li>
         </ul>
 
         <div class="tab-content">
+            <!-- تبويب لوحة التحكم (The Hub) -->
+            <div class="tab-pane fade show active" id="content-hub">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3 col-6">
+                        <div class="card hub-stat-card bg-primary text-white p-3 h-100">
+                            <small>إجمالي الطلاب</small>
+                            <h2 id="hub-total-students" class="fw-bold mb-0">0</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="card hub-stat-card bg-success text-white p-3 h-100">
+                            <small>حضور الفجر اليوم</small>
+                            <h2 id="hub-fajr-today" class="fw-bold mb-0">0</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="card hub-stat-card bg-warning text-dark p-3 h-100">
+                            <small>خواطر اليوم</small>
+                            <h2 id="hub-khawatir-today" class="fw-bold mb-0">0</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="card hub-stat-card bg-danger text-white p-3 h-100">
+                            <small>تنبيهات الغياب</small>
+                            <h2 id="hub-alerts-count" class="fw-bold mb-0">0</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <!-- قائمة الشرف -->
+                    <div class="col-md-6">
+                        <div class="card p-3 shadow-sm border-0 h-100">
+                            <h6 class="fw-bold mb-3 text-primary">🏆 قائمة الشرف (الأكثر التزاماً)</h6>
+                            <div id="honorList" class="list-group list-group-flush">
+                                <!-- سيتم تعبئته -->
+                            </div>
+                        </div>
+                    </div>
+                    <!-- منطقة الخطر -->
+                    <div class="col-md-6">
+                        <div class="card p-3 shadow-sm border-0 h-100">
+                            <h6 class="fw-bold mb-3 text-danger">⚠️ منطقة الخطر (الأكثر غياباً)</h6>
+                            <div id="dangerZoneList" class="list-group list-group-flush">
+                                <!-- سيتم تعبئته -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
             <!-- قسم التقارير -->
-            <div class="tab-pane fade show active" id="content-reports">
+            <div class="tab-pane fade" id="content-reports">
                 <div class="row g-3 mb-4 bg-light p-3 rounded-3 shadow-sm">
                     <div class="col-md-3">
                         <label class="form-label fw-bold small">نطاق التقرير</label>
@@ -69,14 +132,14 @@
                         </select>
                     </div>
                     <div id="studentSelectDiv" class="col-md-3 d-none position-relative">
-                        <label class="form-label fw-bold small">ابحث عن طالب (اكتب الاسم)</label>
-                        <input type="text" id="studentSearchInput" class="form-control" placeholder="اكتب اسم الطالب هنا..." oninput="filterStudentList()">
+                        <label class="form-label fw-bold small">ابحث عن طالب</label>
+                        <input type="text" id="studentSearchInput" class="form-control" placeholder="اكتب اسم الطالب..." oninput="filterStudentList()">
                         <select id="studentList" class="form-select mt-1" size="5" style="display:none; position:absolute; z-index:1000; width:100%;" onchange="selectStudentFromList()"></select>
                         <input type="hidden" id="selectedStudentId">
                     </div>
                     <div id="roomSelectDiv" class="col-md-3 d-none">
                         <label class="form-label fw-bold small">رقم الغرفة</label>
-                        <input type="text" id="roomNumber" class="form-select" placeholder="مثلاً: 101">
+                        <input type="text" id="roomNumber" class="form-control" placeholder="مثلاً: 101">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-bold small">الفترة الزمنية</label>
@@ -95,17 +158,18 @@
                     <div class="text-center p-5 text-muted">الرجاء اختيار الفلاتر والضغط على توليد التقرير</div>
                 </div>
                 
-                <div class="mt-4 d-flex gap-2 justify-content-center">
-                    <button class="btn btn-success rounded-pill px-4" onclick="exportToExcel()">📥 تصدير Excel</button>
-                    <button class="btn btn-dark rounded-pill px-4" onclick="copyToWhatsApp()">📋 نسخ للواتساب</button>
+                <div class="mt-4 d-flex gap-2 justify-content-center flex-wrap">
+                    <button class="btn btn-success rounded-pill px-4 fw-bold" onclick="exportToExcel()">📥 Excel</button>
+                    <button class="btn btn-danger rounded-pill px-4 fw-bold" onclick="exportToPDF()">📄 PDF احترافي</button>
+                    <button class="btn btn-dark rounded-pill px-4 fw-bold" onclick="copyToWhatsApp()">📋 نسخ للواتساب</button>
                 </div>
             </div>
 
             <!-- قسم التحليل البياني -->
             <div class="tab-pane fade" id="content-analytics">
-                <div class="row">
+                <div class="row g-4">
                     <div class="col-md-6">
-                        <div class="card p-3 mb-3 shadow-sm">
+                        <div class="card p-3 shadow-sm border-0">
                             <h6 class="fw-bold mb-3 text-center">🏆 الطلاب الأكثر غياباً (نائم)</h6>
                             <div class="chart-container">
                                 <canvas id="absentStudentsChart"></canvas>
@@ -113,32 +177,28 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="card p-3 mb-3 shadow-sm">
+                        <div class="card p-3 shadow-sm border-0">
                             <h6 class="fw-bold mb-3 text-center">🏢 ترتيب الغرف حسب الانضباط</h6>
                             <div class="chart-container">
                                 <canvas id="roomsRankChart"></canvas>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="row mt-4">
                     <div class="col-12">
-                        <div class="card p-3 shadow-sm">
-                            <h6 class="fw-bold mb-3">📊 جدول الترتيب العام (الأكثر غياباً إلى الأقل)</h6>
+                        <div class="card p-3 shadow-sm border-0">
+                            <h6 class="fw-bold mb-3">📊 جدول الترتيب العام</h6>
                             <div class="table-responsive">
-                                <table class="table table-sm table-hover text-center">
+                                <table class="table table-hover text-center align-middle">
                                     <thead class="table-light">
                                         <tr>
                                             <th>الترتيب</th>
                                             <th>الاسم</th>
                                             <th>الغرفة</th>
-                                            <th>مرات الغياب (نائم)</th>
+                                            <th>مرات الغياب</th>
                                             <th>الحالة</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="rankingTableBody">
-                                        <!-- سيتم تعبئته برمجياً -->
-                                    </tbody>
+                                    <tbody id="rankingTableBody"></tbody>
                                 </table>
                             </div>
                         </div>
@@ -146,69 +206,70 @@
                 </div>
             </div>
 
-            <!-- قسم الإدارة والنقل -->
+            <!-- قسم الإدارة -->
             <div class="tab-pane fade" id="content-admin">
-                <div class="alert alert-info small">
-                    استخدم هذا القسم لنقل البيانات من جهاز لآخر أو لتحديث أرقام هواتف الطلاب.
-                </div>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="card p-3 h-100">
-                            <h6 class="fw-bold">💾 النسخ الاحتياطي والنقل</h6>
-                            <p class="text-muted small">قم بتصدير الملف من جهازك القديم واستيراده في الجهاز الجديد.</p>
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="card p-3 shadow-sm border-0 h-100">
+                            <h6 class="fw-bold mb-3">💾 النسخ الاحتياطي</h6>
                             <div class="d-grid gap-2">
-                                <button class="btn btn-outline-primary" onclick="exportBackup()">📤 تصدير نسخة احتياطية (.json)</button>
+                                <button class="btn btn-outline-primary fw-bold" onclick="exportBackup()">📤 تصدير نسخة (.json)</button>
                                 <input type="file" id="importFile" class="d-none" onchange="importBackup(this)">
-                                <button class="btn btn-outline-success" onclick="document.getElementById('importFile').click()">📥 استيراد نسخة احتياطية</button>
+                                <button class="btn btn-outline-success fw-bold" onclick="document.getElementById('importFile').click()">📥 استيراد نسخة</button>
+                            </div>
+                            <hr>
+                            <h6 class="fw-bold mb-2">📥 تصدير قوائم الطباعة</h6>
+                            <select id="exportOption" class="form-select form-select-sm mb-2">
+                                <option value="withRoom">الاسم مع الغرفة</option>
+                                <option value="nameOnly">الاسم فقط</option>
+                            </select>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-sm btn-success fw-bold" onclick="exportStudents('excel')">تصدير Excel</button>
+                                <button class="btn btn-sm btn-primary fw-bold" onclick="exportStudents('word')">تصدير Word</button>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card p-3 h-100">
-                            <h6 class="fw-bold mb-3">👤 إدارة الطلاب</h6>
+                    <div class="col-md-8">
+                        <div class="card p-3 shadow-sm border-0 h-100">
+                            <h6 class="fw-bold mb-3">👤 إدارة الطلاب وتعديل البيانات</h6>
                             <div class="d-flex gap-2 mb-3">
-                                <button id="btnEditMode" class="btn btn-sm btn-primary flex-grow-1 rounded-pill fw-bold" onclick="switchAdminMode('edit')">📝 وضع التعديل</button>
-                                <button id="btnDeleteMode" class="btn btn-sm btn-outline-danger flex-grow-1 rounded-pill fw-bold" onclick="switchAdminMode('delete')">🗑️ وضع الحذف</button>
+                                <button id="btnEditMode" class="btn btn-sm btn-primary rounded-pill flex-grow-1 fw-bold" onclick="switchAdminMode('edit')">📝 تعديل الأسماء والغرف</button>
+                                <button id="btnDeleteMode" class="btn btn-sm btn-outline-danger rounded-pill flex-grow-1 fw-bold" onclick="switchAdminMode('delete')">🗑️ حذف طلاب</button>
                             </div>
-                            
-                            <div id="adminControls">
-                                <div id="roomButtonsContainer" class="d-flex flex-wrap gap-2 mb-3 border-bottom pb-2">
-                                    <!-- أزرار الغرف ستظهر هنا -->
-                                </div>
-                                <div class="mb-2">
-                                    <input type="text" id="adminStudentSearch" class="form-control form-control-sm mb-2" placeholder="🔍 بحث سريع..." oninput="renderPhoneList('search')">
-                                </div>
-                                <div id="phoneUpdateList" style="max-height: 300px; overflow-y: auto;" class="mb-2 border p-2 rounded bg-light">
-                                    <div class="text-center text-muted p-4 small">اختر غرفة أو ابحث للبدء</div>
-                                </div>
-                                <div id="saveBtnContainer">
-                                    <button class="btn btn-primary w-100 mt-2 fw-bold" onclick="saveAllStudentEdits()">💾 حفظ التعديلات</button>
-                                </div>
-                            </div>
+                            <div id="roomButtonsContainer" class="d-flex flex-wrap gap-1 mb-3"></div>
+                            <input type="text" id="adminStudentSearch" class="form-control form-control-sm mb-2 rounded-pill" placeholder="🔍 بحث سريع..." oninput="renderPhoneList('search')">
+                            <div id="phoneUpdateList" style="max-height: 400px; overflow-y: auto;" class="border rounded p-2 bg-light"></div>
+                            <button id="saveBtnAdmin" class="btn btn-primary w-100 mt-3 fw-bold rounded-pill" onclick="saveAllStudentEdits()">💾 حفظ التعديلات النهائية</button>
                         </div>
                     </div>
-                    
-                    <!-- قسم تصدير الأسماء الجديد -->
-                    <div class="col-12 mt-3">
-                        <div class="card p-3 shadow-sm border-0 bg-light">
-                            <h6 class="fw-bold mb-3 text-primary">📥 تصدير قوائم الأسماء للطباعة</h6>
-                            <div class="row g-2 align-items-center">
-                                <div class="col-md-4">
-                                    <label class="x-small fw-bold mb-1 d-block">خيارات التنسيق:</label>
-                                    <select id="exportOption" class="form-select form-select-sm">
-                                        <option value="withRoom">الاسم مع رقم الغرفة (مرتب رقمياً)</option>
-                                        <option value="nameOnly">الاسم فقط</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6 d-flex gap-2 align-items-end">
-                                    <button class="btn btn-sm btn-success px-4 rounded-pill fw-bold" onclick="exportStudents('excel')">تصدير Excel احترافي 📊</button>
-                                    <button class="btn btn-sm btn-primary px-4 rounded-pill fw-bold" onclick="exportStudents('word')">تصدير Word منسق 📝</button>
-                                </div>
-                            </div>
-                            <div class="mt-2 x-small text-muted">
-                                * ملاحظة: يتم ترتيب الطلاب تلقائياً حسب أرقام الغرف لسهولة التوزيع.
-                            </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- مودال عرض QR Code والإحصائيات -->
+<div class="modal fade" id="qrModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border-radius: 20px; border: none;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">📊 الملف الشخصي للطالب</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-4">
+                    <div class="col-md-5 text-center border-start">
+                        <div id="qrcode" class="d-flex justify-content-center mb-3 p-2 bg-white rounded shadow-sm"></div>
+                        <h5 id="qrStudentName" class="fw-bold mb-1"></h5>
+                        <p id="qrStudentRoom" class="badge bg-secondary rounded-pill mb-3"></p>
+                        <button class="btn btn-success w-100 rounded-pill fw-bold mb-2 shadow-sm" onclick="sendQRWhatsApp()">إرسال الكود للواتساب 📱</button>
+                    </div>
+                    <div class="col-md-7">
+                        <h6 class="fw-bold mb-3 text-primary border-bottom pb-2">📈 إحصائيات حضور المحاضرات</h6>
+                        <div style="height: 220px;">
+                            <canvas id="individualStudentChart"></canvas>
                         </div>
+                        <div id="studentStatsSummary" class="mt-3 text-center small fw-bold p-2 bg-light rounded-pill"></div>
                     </div>
                 </div>
             </div>
@@ -218,465 +279,314 @@
 
 <script>
     let db;
+    const DB_KEY = "prayer_pro_v8";
     let charts = {};
     let adminMode = 'edit';
-    const DB_KEY = "prayer_pro_v8";
+    let currentQRData = null;
 
-    // 1. تهيئة قاعدة البيانات
     async function init() {
         const SQL = await initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${f}` });
         const saved = localStorage.getItem(DB_KEY);
-        
         if (saved) {
             db = new SQL.Database(new Uint8Array(JSON.parse(saved)));
-            checkSchema(); // التأكد من وجود حقل الهاتف
+            checkSchema();
             loadStudentList();
-            renderRoomButtons();
+            refreshHub();
         } else {
-            document.getElementById('reportOutput').innerHTML = "<div class='alert alert-warning'>لم يتم العثور على بيانات. يرجى الحفظ من الصفحة الرئيسية أولاً.</div>";
+            alert("يرجى العودة للصفحة الرئيسية لتهيئة البيانات.");
         }
     }
 
-    // إضافة حقل الهاتف إذا لم يكن موجوداً
     function checkSchema() {
         try {
-            db.exec("ALTER TABLE students ADD COLUMN phone TEXT;");
+            // التحقق من وجود جدول الخواطر والمحاضرات
+            db.run("CREATE TABLE IF NOT EXISTS khawatir (id INTEGER PRIMARY KEY AUTOINCREMENT, s_id INTEGER, date TEXT, status TEXT, notes TEXT)");
+            db.run("CREATE TABLE IF NOT EXISTS lectures (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, l_date TEXT)");
+            db.run("CREATE TABLE IF NOT EXISTS lecture_attendance (id INTEGER PRIMARY KEY AUTOINCREMENT, l_id INTEGER, s_id INTEGER, status TEXT, notes TEXT, timestamp TEXT)");
             saveDB();
-        } catch(e) { /* العمود موجود مسبقاً */ }
+        } catch(e) { console.error(e); }
     }
 
     function saveDB() {
-        const data = db.export();
-        localStorage.setItem(DB_KEY, JSON.stringify(Array.from(data)));
+        localStorage.setItem(DB_KEY, JSON.stringify(Array.from(db.export())));
     }
 
-    // 2. التحكم في الواجهة
+    // --- وظائف Hub ---
+    function refreshHub() {
+        if (!db) return;
+        
+        // 1. إجمالي الطلاب
+        const total = db.exec("SELECT COUNT(*) FROM students")[0].values[0][0];
+        document.getElementById('hub-total-students').innerText = total;
+
+        // 2. حضور الفجر اليوم
+        const today = new Date().toISOString().split('T')[0];
+        const fajr = db.exec(`SELECT COUNT(*) FROM attendance WHERE date='${today}' AND prayer='الفجر' AND status='صلى'`)[0].values[0][0];
+        document.getElementById('hub-fajr-today').innerText = fajr;
+
+        // 3. خواطر اليوم
+        const khawat = db.exec(`SELECT COUNT(*) FROM khawatir WHERE date='${today}' AND status='تم الأداء'`)[0].values[0][0];
+        document.getElementById('hub-khawatir-today').innerText = khawat;
+
+        // 4. قائمة الشرف
+        const honor = db.exec(`
+            SELECT s.name, COUNT(CASE WHEN a.status='صلى' THEN 1 END) as score
+            FROM students s
+            JOIN attendance a ON s.id = a.s_id
+            GROUP BY s.id ORDER BY score DESC LIMIT 5
+        `);
+        const honorList = document.getElementById('honorList');
+        if (honor.length) {
+            honorList.innerHTML = honor[0].values.map(v => `
+                <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                    <span>🌟 ${v[0]}</span>
+                    <span class="badge badge-honor rounded-pill">${v[1]} صلاة</span>
+                </div>
+            `).join('');
+        }
+
+        // 5. منطقة الخطر
+        const danger = db.exec(`
+            SELECT s.name, COUNT(CASE WHEN a.status='نائم' THEN 1 END) as score
+            FROM students s
+            JOIN attendance a ON s.id = a.s_id
+            GROUP BY s.id ORDER BY score DESC LIMIT 5
+        `);
+        const dangerList = document.getElementById('dangerZoneList');
+        if (danger.length) {
+            dangerList.innerHTML = danger[0].values.map(v => `
+                <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                    <span>⚠️ ${v[0]}</span>
+                    <span class="badge badge-danger-zone rounded-pill">${v[1]} غياب</span>
+                </div>
+            `).join('');
+            document.getElementById('hub-alerts-count').innerText = danger[0].values.filter(v => v[1] > 5).length;
+        }
+    }
+
+    // --- وظائف التقارير ---
     function toggleScopeInputs() {
         const scope = document.getElementById('scopeType').value;
-        document.getElementById('studentSelectDiv').classList.toggle('d-none', scope !== 'student');
-        document.getElementById('roomSelectDiv').classList.toggle('d-none', scope !== 'room');
-    }
-
-    let allStudents = [];
-    function loadStudentList() {
-        try {
-            const res = db.exec("SELECT id, name FROM students ORDER BY name ASC");
-            if (res.length && res[0].values.length) {
-                allStudents = res[0].values.map(v => ({ id: v[0], name: v[1] }));
-            }
-        } catch (e) {
-            console.error("Error loading students:", e);
-        }
+        document.getElementById('studentSelectDiv').className = scope === 'student' ? 'col-md-3 position-relative' : 'col-md-3 d-none';
+        document.getElementById('roomSelectDiv').className = scope === 'room' ? 'col-md-3' : 'col-md-3 d-none';
     }
 
     function filterStudentList() {
         const input = document.getElementById('studentSearchInput').value.toLowerCase();
-        const select = document.getElementById('studentList');
+        const list = document.getElementById('studentList');
+        const res = db.exec(`SELECT id, name FROM students WHERE name LIKE '%${input}%' LIMIT 10`);
         
-        if (input.length < 1) {
-            select.style.display = 'none';
-            return;
-        }
-
-        const filtered = allStudents.filter(s => s.name.toLowerCase().includes(input));
-        
-        if (filtered.length > 0) {
-            select.innerHTML = filtered.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-            select.style.display = 'block';
+        if (res.length && input.length > 0) {
+            list.innerHTML = res[0].values.map(v => `<option value="${v[0]}">${v[1]}</option>`).join('');
+            list.style.display = 'block';
         } else {
-            select.innerHTML = '<option value="">لا يوجد نتائج</option>';
-            select.style.display = 'block';
+            list.style.display = 'none';
         }
     }
 
     function selectStudentFromList() {
-        const select = document.getElementById('studentList');
-        const input = document.getElementById('studentSearchInput');
-        const hiddenId = document.getElementById('selectedStudentId');
-        
-        if (select.value) {
-            const selectedText = select.options[select.selectedIndex].text;
-            input.value = selectedText;
-            hiddenId.value = select.value;
-            select.style.display = 'none';
-            runReport();
-        }
+        const list = document.getElementById('studentList');
+        document.getElementById('studentSearchInput').value = list.options[list.selectedIndex].text;
+        document.getElementById('selectedStudentId').value = list.value;
+        list.style.display = 'none';
+        runReport();
     }
 
-    // إغلاق قائمة البحث عند النقر خارجها
-    document.addEventListener('click', function(e) {
-        const select = document.getElementById('studentList');
-        const input = document.getElementById('studentSearchInput');
-        if (e.target !== input && e.target !== select) {
-            select.style.display = 'none';
-        }
-    });
-
-    // 3. توليد التقارير
     function runReport() {
-        if (!db) return;
-        
         const scope = document.getElementById('scopeType').value;
-        const days = document.getElementById('timeFrame').value;
-        const today = new Date().toISOString().split('T')[0];
+        const time = document.getElementById('timeFrame').value;
+        let filter = "1=1";
+        
+        if (time !== "0") filter += ` AND a.date >= date('now', '-${time} days')`;
+        else filter += ` AND a.date = date('now')`;
+
+        if (scope === 'student') filter += ` AND s.id = ${document.getElementById('selectedStudentId').value}`;
+        if (scope === 'room') filter += ` AND s.room = '${document.getElementById('roomNumber').value}'`;
+
+        const sql = `
+            SELECT s.name, s.room, a.date, a.prayer, a.status, a.notes, s.phone, s.id
+            FROM attendance a
+            JOIN students s ON a.s_id = s.id
+            WHERE ${filter}
+            ORDER BY a.date DESC, CAST(s.room AS INTEGER) ASC, s.name ASC, a.prayer ASC
+        `;
+        
+        const res = db.exec(sql);
         const output = document.getElementById('reportOutput');
         
-        let filter = (days === "0") ? `a.date = '${today}'` : `a.date >= date('now', '-${days} days')`;
-        
-        if (scope === 'student') {
-            const studentId = document.getElementById('selectedStudentId').value;
-            if (!studentId) {
-                output.innerHTML = "<div class='text-center p-5 text-muted'>يرجى كتابة اسم الطالب واختياره من القائمة</div>";
-                return;
-            }
-            filter += ` AND s.id = ${studentId}`;
-        } else if (scope === 'room') {
-            const roomNum = document.getElementById('roomNumber').value;
-            if (!roomNum) {
-                output.innerHTML = "<div class='text-center p-5 text-muted'>يرجى إدخال رقم الغرفة</div>";
-                return;
-            }
-            filter += ` AND s.room = '${roomNum}'`;
+        if (!res.length || !res[0].values.length) {
+            output.innerHTML = '<div class="text-center p-5 text-muted">لا توجد بيانات لهذه الفترة</div>';
+            return;
         }
 
-        try {
-            const sql = `
-                SELECT s.name, s.room, a.prayer, a.status, a.notes, a.date, s.phone, s.id
-                FROM attendance a 
-                JOIN students s ON a.s_id = s.id 
-                WHERE ${filter}
-                ORDER BY a.date DESC, s.name ASC, a.prayer ASC
-            `;
-            const res = db.exec(sql);
-
-            output.innerHTML = "";
-
-            if (!res.length || !res[0].values.length) {
-                output.innerHTML = "<div class='text-center p-5'>لا توجد سجلات لهذه الفترة.</div>";
-                return;
-            }
-
-            const data = res[0].values;
-
-            // إضافة زر التقرير الشامل إذا كان المختار طالباً واحداً ولفترة زمنية
-            if (scope === 'student' && days !== "0") {
-                const studentName = data[0][0];
-                const studentPhone = data[0][6] || "";
-                const studentId = data[0][7];
-                output.innerHTML = `
-                    <div class="alert alert-primary d-flex justify-content-between align-items-center shadow-sm mb-4">
-                        <div>
-                            <strong>تقرير شامل:</strong> هل تود إرسال كامل سجل الفترة في رسالة واحدة؟
+        let currentStudent = "";
+        let html = "";
+        
+        res[0].values.forEach(v => {
+            const studentKey = v[0] + v[1] + v[2];
+            if (currentStudent !== studentKey) {
+                if (currentStudent !== "") html += `</div></div>`;
+                currentStudent = studentKey;
+                const dateObj = new Date(v[2]);
+                const dayName = dateObj.toLocaleDateString('ar-SA', { weekday: 'long' });
+                html += `
+                    <div class="student-block">
+                        <div class="student-header">
+                            <span class="fw-bold">${v[0]} <span class="badge bg-light text-dark ms-2">غرفة ${v[1]}</span></span>
+                            <div class="d-flex gap-2 align-items-center">
+                                <small class="me-2">${dayName} | ${v[2]}</small>
+                                <button class="btn btn-sm btn-whatsapp rounded-pill px-3" onclick="sendWhatsApp('${v[6]||''}', '${v[0]}', '${v[2]}')">واتساب 📱</button>
+                            </div>
                         </div>
-                        <button class="btn btn-whatsapp fw-bold" onclick="sendComprehensiveWhatsApp('${studentPhone}', '${studentName}', ${studentId}, ${days})">
-                            إرسال التقرير الشامل 📱
-                        </button>
-                    </div>
+                        <div class="prayer-grid">
                 `;
             }
-        const grouped = {};
-        
-        data.forEach(r => {
-            const key = `${r[0]}_${r[5]}`; // تجميع حسب الاسم والتاريخ
-            if (!grouped[key]) grouped[key] = { name: r[0], room: r[1], date: r[5], phone: r[6], prayers: [] };
-            grouped[key].prayers.push({ pName: r[2], status: r[3], note: r[4] });
+            html += `
+                <div class="prayer-item">
+                    <div class="small text-muted">${v[3]}</div>
+                    <div class="status-${v[4]}">${v[4]}</div>
+                </div>
+            `;
         });
-
-            for (const key in grouped) {
-                const g = grouped[key];
-                let html = `
-                    <div class="student-block shadow-sm">
-                        <div class="student-header">
-                        <div>
-                            <span class="fw-bold">${g.name}</span> 
-                            <small class="badge bg-secondary ms-2">غرفة ${g.room}</small>
-                            <div class="small opacity-75">${new Date(g.date).toLocaleDateString('ar-SA', { weekday: 'long' })} | ${g.date}</div>
-                        </div>
-                            <button class="btn btn-sm btn-whatsapp" onclick="sendWhatsApp('${g.phone || ''}', '${g.name}', '${g.date}')">واتساب 📱</button>
-                        </div>
-                        <div class="prayer-grid">`;
-                
-                g.prayers.forEach(p => {
-                    html += `
-                        <div class="prayer-item">
-                            <div class="small text-muted">${p.pName}</div>
-                            <div class="status-${p.status}">${p.status}</div>
-                            ${p.note ? `<div class="x-small text-muted" style="font-size:10px">📝 ${p.note}</div>` : ''}
-                        </div>`;
-                });
-                html += `</div></div>`;
-                output.innerHTML += html;
-            }
-        } catch (e) {
-            console.error("SQL Error:", e);
-            output.innerHTML = "<div class='alert alert-danger'>حدث خطأ أثناء جلب البيانات. يرجى التأكد من صحة الفلاتر.</div>";
+        
+        output.innerHTML = html + `</div></div>`;
+        
+        // إذا كان طالباً معيناً ولفترة، أضف زر التقرير الشامل
+        if (scope === 'student' && time !== "0") {
+            const sData = res[0].values[0];
+            const alertHtml = `
+                <div class="alert alert-primary d-flex justify-content-between align-items-center rounded-pill px-4 shadow-sm mb-4">
+                    <span>هل تريد إرسال ملخص كامل لـ <b>${sData[0]}</b> خلال ${time} يوم؟</span>
+                    <button class="btn btn-primary btn-sm rounded-pill px-4" onclick="sendComprehensiveWhatsApp('${sData[6]||''}', '${sData[0]}', ${sData[7]}, '${time}')">إرسال التقرير الشامل 📱</button>
+                </div>
+            `;
+            output.insertAdjacentHTML('afterbegin', alertHtml);
         }
     }
 
-    // 4. التحليل البياني (Charts)
+    // --- وظائف التحليل والرسوم ---
     function renderCharts() {
-        if (!db) return;
+        const time = document.getElementById('timeFrame').value;
+        const filter = time !== "0" ? `WHERE a.date >= date('now', '-${time} days')` : `WHERE a.date = date('now')`;
 
-        // تعطيل الرسوم القديمة إذا وجدت
-        if (charts.absent) charts.absent.destroy();
-        if (charts.rooms) charts.rooms.destroy();
-
-        // أ) الطلاب الأكثر غياباً (نائم)
-        const resStudents = db.exec(`
-            SELECT s.name, COUNT(*) as count 
-            FROM attendance a JOIN students s ON a.s_id = s.id 
-            WHERE a.status = 'نائم' 
+        // 1. الأكثر غياباً
+        const resAbs = db.exec(`
+            SELECT s.name, COUNT(*) as count FROM attendance a 
+            JOIN students s ON a.s_id = s.id 
+            ${filter} AND a.status='نائم' 
             GROUP BY s.id ORDER BY count DESC LIMIT 5
         `);
-
-        if (resStudents.length) {
-            const labels = resStudents[0].values.map(v => v[0]);
-            const values = resStudents[0].values.map(v => v[1]);
-            charts.absent = new Chart(document.getElementById('absentStudentsChart'), {
+        
+        if (resAbs.length) {
+            const ctx = document.getElementById('absentStudentsChart').getContext('2d');
+            if (charts.absent) charts.absent.destroy();
+            charts.absent = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: labels,
-                    datasets: [{ label: 'مرات الغياب', data: values, backgroundColor: '#e74c3c' }]
+                    labels: resAbs[0].values.map(v => v[0]),
+                    datasets: [{ label: 'مرات الغياب', data: resAbs[0].values.map(v => v[1]), backgroundColor: '#e74c3c' }]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
+                options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
             });
         }
 
-        // ب) الغرف الأكثر غياباً
-        const resRooms = db.exec(`
-            SELECT s.room, COUNT(*) as count 
-            FROM attendance a JOIN students s ON a.s_id = s.id 
-            WHERE a.status = 'نائم' 
+        // 2. ترتيب الغرف
+        const resRoom = db.exec(`
+            SELECT s.room, COUNT(*) as count FROM attendance a 
+            JOIN students s ON a.s_id = s.id 
+            ${filter} AND a.status='صلى' 
             GROUP BY s.room ORDER BY count DESC LIMIT 5
         `);
-
-        if (resRooms.length) {
-            const labels = resRooms[0].values.map(v => "غرفة " + v[0]);
-            const values = resRooms[0].values.map(v => v[1]);
-            charts.rooms = new Chart(document.getElementById('roomsRankChart'), {
+        
+        if (resRoom.length) {
+            const ctx = document.getElementById('roomsRankChart').getContext('2d');
+            if (charts.rooms) charts.rooms.destroy();
+            charts.rooms = new Chart(ctx, {
                 type: 'pie',
                 data: {
-                    labels: labels,
-                    datasets: [{ data: values, backgroundColor: ['#3498db', '#2ecc71', '#f1c40f', '#e67e22', '#9b59b6'] }]
+                    labels: resRoom[0].values.map(v => 'غرفة ' + v[0]),
+                    datasets: [{ data: resRoom[0].values.map(v => v[1]), backgroundColor: ['#2ecc71', '#3498db', '#f1c40f', '#9b59b6', '#e67e22'] }]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
+                options: { maintainAspectRatio: false }
             });
         }
 
-        // ج) جدول الترتيب التفصيلي
-        const resRanking = db.exec(`
-            SELECT s.name, s.room, COUNT(CASE WHEN a.status = 'نائم' THEN 1 END) as absent_count
+        // 3. جدول الترتيب العام
+        const resRank = db.exec(`
+            SELECT s.name, s.room, COUNT(CASE WHEN a.status='نائم' THEN 1 END) as abs_count
             FROM students s
             LEFT JOIN attendance a ON s.id = a.s_id
-            GROUP BY s.id
-            ORDER BY absent_count DESC, s.name ASC
+            GROUP BY s.id ORDER BY abs_count DESC, s.name ASC
         `);
-
-        const tableBody = document.getElementById('rankingTableBody');
-        if (resRanking.length) {
-            tableBody.innerHTML = resRanking[0].values.map((v, i) => `
+        const tbody = document.getElementById('rankingTableBody');
+        if (resRank.length) {
+            tbody.innerHTML = resRank[0].values.map((v, i) => `
                 <tr>
-                    <td>${i + 1}</td>
-                    <td>${v[0]}</td>
+                    <td>${i+1}</td>
+                    <td class="fw-bold">${v[0]}</td>
                     <td>${v[1]}</td>
-                    <td><span class="badge bg-danger">${v[2]}</span></td>
-                    <td>${v[2] > 5 ? '⚠️ يحتاج متابعة' : '✅ جيد'}</td>
+                    <td><span class="badge bg-danger rounded-pill">${v[2]}</span></td>
+                    <td>${v[2] > 5 ? '⚠️ متابعة' : '✅ ممتاز'}</td>
                 </tr>
             `).join('');
         }
     }
 
-    // 5. وظائف الواتساب والتصدير
-    function sendWhatsApp(phone, name, date) {
-        if (!phone || phone.trim() === "") {
-            alert(`⚠️ رقم الهاتف غير مسجل للطالب: ${name}\nيرجى إضافته من تبويب "الإدارة والنقل" أولاً.`);
-            return;
-        }
-        const cleanPhone = phone.replace(/\D/g, '');
-        let message = `*تقرير متابعة الصلاة*\n`;
-        message += `👤 الطالب: ${name}\n`;
-        message += `📅 التاريخ: ${new Date(date).toLocaleDateString('ar-SA', { weekday: 'long' })} ${date}\n\n`;
-        
-        const res = db.exec(`SELECT prayer, status FROM attendance a JOIN students s ON a.s_id = s.id WHERE s.id=(SELECT id FROM students WHERE name='${name}') AND a.date='${date}'`);
-        if (res.length) {
-            res[0].values.forEach(v => {
-                message += `🔹 ${v[0]}: ${v[1]}\n`;
-            });
-        }
-        
-        const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-        window.open(url, '_blank');
-    }
-
-    function sendComprehensiveWhatsApp(phone, name, studentId, days) {
-        if (!phone || phone.trim() === "") {
-            alert(`⚠️ رقم الهاتف غير مسجل للطالب: ${name}\nيرجى إضافته من تبويب "الإدارة والنقل" أولاً.`);
-            return;
-        }
-        const cleanPhone = phone.replace(/\D/g, '');
-        const periodText = days === "7" ? "آخر 7 أيام" : "آخر 30 يوم";
-        let message = `*التقرير الشامل للمتابعة (${periodText})*\n`;
-        message += `👤 الطالب: ${name}\n`;
-        message += `--------------------------\n\n`;
-        
-        const filter = `a.date >= date('now', '-${days} days') AND s.id = ${studentId}`;
-        const res = db.exec(`
-            SELECT a.date, a.prayer, a.status 
-            FROM attendance a 
-            JOIN students s ON a.s_id = s.id 
-            WHERE ${filter}
-            ORDER BY a.date DESC, a.prayer ASC
-        `);
-
-        if (res.length) {
-            let currentDate = "";
-            res[0].values.forEach(v => {
-                if (currentDate !== v[0]) {
-                    currentDate = v[0];
-                    message += `\n📅 *${currentDate}*:\n`;
-                }
-                message += ` - ${v[1]}: ${v[2]}\n`;
-            });
-        }
-        
-        message += `\n--------------------------\nتم الإرسال عبر نظام المتابعة المطور.`;
-        
-        const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-        window.open(url, '_blank');
-    }
-
-    function exportToExcel() {
-        const rows = [["الاسم", "الغرفة", "التاريخ", "الصلاة", "الحالة", "ملاحظات"]];
-        const res = db.exec("SELECT s.name, s.room, a.date, a.prayer, a.status, a.notes FROM attendance a JOIN students s ON a.s_id = s.id");
-        if (res.length) {
-            res[0].values.forEach(v => rows.push(v));
-            const ws = XLSX.utils.aoa_to_sheet(rows);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "التقارير");
-            XLSX.writeFile(wb, "تقرير_المتابعة.xlsx");
-        }
-    }
-
-    function copyToWhatsApp() {
-        let text = "📋 تقرير المتابعة\n\n";
-        document.querySelectorAll('.student-block').forEach(b => {
-            text += `👤 ${b.querySelector('.fw-bold').innerText} (${b.querySelector('.badge').innerText})\n`;
-            b.querySelectorAll('.prayer-item').forEach(p => {
-                const lines = p.innerText.split('\n');
-                text += `  - ${lines[0]}: ${lines[1]}\n`;
-            });
-            text += "\n";
-        });
-        navigator.clipboard.writeText(text).then(() => alert("تم النسخ بنجاح! يمكنك الآن لصقه في واتساب."));
-    }
-
-    // 6. الإدارة والنقل
-    function renderRoomButtons() {
-        try {
-            const res = db.exec("SELECT DISTINCT room FROM students ORDER BY room ASC");
-            const container = document.getElementById('roomButtonsContainer');
-            if (res.length && res[0].values.length) {
-                let html = '<button class="btn btn-sm btn-outline-secondary" onclick="renderPhoneList(\'all\')">الكل</button>';
-                html += res[0].values.map(v => `
-                    <button class="btn btn-sm btn-outline-primary" onclick="renderPhoneList('${v[0]}')">غرفة ${v[0]}</button>
-                `).join('');
-                container.innerHTML = html;
-            } else {
-                container.innerHTML = '<span class="text-muted small">لا توجد غرف مسجلة</span>';
-            }
-        } catch (e) { console.error(e); }
-    }
-
+    // --- وظائف الإدارة ---
     function switchAdminMode(mode) {
         adminMode = mode;
-        const btnEdit = document.getElementById('btnEditMode');
-        const btnDelete = document.getElementById('btnDeleteMode');
-        const saveContainer = document.getElementById('saveBtnContainer');
+        document.getElementById('btnEditMode').className = mode === 'edit' ? "btn btn-sm btn-primary rounded-pill flex-grow-1 fw-bold" : "btn btn-sm btn-outline-primary rounded-pill flex-grow-1 fw-bold";
+        document.getElementById('btnDeleteMode').className = mode === 'delete' ? "btn btn-sm btn-danger rounded-pill flex-grow-1 fw-bold" : "btn btn-sm btn-outline-danger rounded-pill flex-grow-1 fw-bold";
+        document.getElementById('saveBtnAdmin').style.display = mode === 'edit' ? 'block' : 'none';
+        renderPhoneList('all');
+    }
 
-        if (mode === 'edit') {
-            btnEdit.className = "btn btn-sm btn-primary flex-grow-1 rounded-pill fw-bold";
-            btnDelete.className = "btn btn-sm btn-outline-danger flex-grow-1 rounded-pill fw-bold";
-            saveContainer.style.display = 'block';
-        } else {
-            btnEdit.className = "btn btn-sm btn-outline-primary flex-grow-1 rounded-pill fw-bold";
-            btnDelete.className = "btn btn-sm btn-danger flex-grow-1 rounded-pill fw-bold";
-            saveContainer.style.display = 'none';
+    function renderRoomButtons() {
+        const res = db.exec("SELECT DISTINCT room FROM students ORDER BY CAST(room AS INTEGER) ASC");
+        const container = document.getElementById('roomButtonsContainer');
+        let html = '<button class="btn btn-xs btn-outline-secondary rounded-pill px-3 mb-1" onclick="renderPhoneList(\'all\')">الكل</button>';
+        if (res.length) {
+            html += res[0].values.map(v => `<button class="btn btn-xs btn-outline-primary rounded-pill px-3 mb-1" onclick="renderPhoneList('${v[0]}')">غرفة ${v[0]}</button>`).join('');
         }
+        container.innerHTML = html;
         renderPhoneList('all');
     }
 
     function renderPhoneList(mode = 'all') {
         let sql = "SELECT id, name, phone, room FROM students ";
-        const searchText = document.getElementById('adminStudentSearch').value.toLowerCase();
-
-        if (mode === 'search' && searchText) {
-            sql += ` WHERE name LIKE '%${searchText}%' OR room LIKE '%${searchText}%' `;
-        } else if (mode !== 'all' && mode !== 'search') {
-            sql += ` WHERE room = '${mode}' `;
-        }
+        const search = document.getElementById('adminStudentSearch').value;
+        if (mode === 'search' && search) sql += ` WHERE name LIKE '%${search}%' OR room LIKE '%${search}%' `;
+        else if (mode !== 'all' && mode !== 'search') sql += ` WHERE room = '${mode}' `;
         sql += " ORDER BY CAST(room AS INTEGER) ASC, name ASC";
         
         const res = db.exec(sql);
         const div = document.getElementById('phoneUpdateList');
-        
-        if (res.length && res[0].values.length) {
-            if (adminMode === 'edit') {
-                div.innerHTML = `
-                    <table class="table table-sm table-borderless align-middle mb-0">
-                        <thead class="x-small text-muted border-bottom">
-                            <tr>
-                                <th>الاسم</th>
-                                <th style="width: 70px;">الغرفة</th>
-                                <th>الجوال</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${res[0].values.map(v => `
-                                <tr class="border-bottom">
-                                    <td><input type="text" class="form-control form-control-sm border-0 fw-bold edit-name" data-id="${v[0]}" value="${v[1]}"></td>
-                                    <td><input type="text" class="form-control form-control-sm border-0 text-center edit-room" data-id="${v[0]}" value="${v[3]}"></td>
-                                    <td><input type="text" class="form-control form-control-sm border-0 edit-phone" data-id="${v[0]}" value="${v[2] || ''}" placeholder="9665xxx"></td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>`;
-            } else {
-                div.innerHTML = `
-                    <table class="table table-sm table-borderless align-middle mb-0">
-                        <thead class="x-small text-muted border-bottom">
-                            <tr>
-                                <th>الاسم</th>
-                                <th>الغرفة</th>
-                                <th>الإجراء</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${res[0].values.map(v => `
-                                <tr class="border-bottom">
-                                    <td class="fw-bold small">${v[1]}</td>
-                                    <td class="small">${v[3]}</td>
-                                    <td><button class="btn btn-sm btn-danger rounded-pill px-3 py-0" style="font-size:10px" onclick="deleteStudentAdmin(${v[0]})">حذف 🗑️</button></td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>`;
-            }
-        } else {
-            div.innerHTML = '<div class="text-center p-4 text-muted">لا توجد نتائج</div>';
+        if (!res.length || !res[0].values.length) {
+            div.innerHTML = '<div class="text-center p-4">لا توجد نتائج</div>';
+            return;
         }
-    }
 
-    function deleteStudentAdmin(id) {
-        if (confirm("⚠️ هل أنت متأكد من حذف هذا الطالب وجميع سجلاته نهائياً؟")) {
-            db.run("DELETE FROM attendance WHERE s_id = ?", [id]);
-            db.run("DELETE FROM khawatir WHERE s_id = ?", [id]);
-            db.run("DELETE FROM students WHERE id = ?", [id]);
-            saveDB();
-            loadStudentList();
-            renderRoomButtons();
-            renderPhoneList('all');
-            alert("✅ تم حذف الطالب بنجاح.");
-        }
+        let html = `<table class="table table-sm align-middle mb-0"><tbody>`;
+        res[0].values.forEach(v => {
+            if (adminMode === 'edit') {
+                html += `
+                    <tr>
+                        <td><input type="text" class="form-control form-control-sm border-0 fw-bold edit-name" data-id="${v[0]}" value="${v[1]}"></td>
+                        <td style="width: 80px;"><input type="text" class="form-control form-control-sm border-0 text-center edit-room" data-id="${v[0]}" value="${v[3]}"></td>
+                        <td><input type="text" class="form-control form-control-sm border-0 edit-phone" data-id="${v[0]}" value="${v[2]||''}" placeholder="جوال"></td>
+                    </tr>
+                `;
+            } else {
+                html += `
+                    <tr>
+                        <td class="fw-bold">${v[1]}</td>
+                        <td>غرفة ${v[3]}</td>
+                        <td class="text-end"><button class="btn btn-xs btn-danger rounded-pill" onclick="deleteStudentAdmin(${v[0]})">حذف 🗑️</button></td>
+                    </tr>
+                `;
+            }
+        });
+        div.innerHTML = html + `</tbody></table>`;
     }
 
     function saveAllStudentEdits() {
@@ -689,111 +599,176 @@
             db.run("UPDATE students SET name = ?, room = ?, phone = ? WHERE id = ?", [name, room, phone, id]);
         });
         saveDB();
-        loadStudentList(); // تحديث قائمة البحث في التقارير
-        renderRoomButtons(); // تحديث أزرار الغرف
-        alert("✅ تم حفظ جميع التعديلات بنجاح! تم نقل الطلاب للغرف الجديدة وتحديث أسمائهم.");
+        alert("✅ تم حفظ التعديلات بنجاح!");
+        renderRoomButtons();
+    }
+
+    function deleteStudentAdmin(id) {
+        if (confirm("⚠️ هل أنت متأكد من الحذف النهائي؟")) {
+            db.run("DELETE FROM attendance WHERE s_id = ?", [id]);
+            db.run("DELETE FROM students WHERE id = ?", [id]);
+            saveDB();
+            renderPhoneList('all');
+        }
+    }
+
+    // --- وظائف البطاقات و QR ---
+    function renderStudentCards() {
+        const search = document.getElementById('cardSearchInput').value.toLowerCase();
+        const res = db.exec("SELECT id, name, room, phone FROM students ORDER BY CAST(room AS INTEGER) ASC, name ASC");
+        const container = document.getElementById('studentCardsContainer');
+        
+        if (res.length && res[0].values.length) {
+            const filtered = res[0].values.filter(v => v[1].toLowerCase().includes(search) || v[2].toString().includes(search));
+            container.innerHTML = filtered.map(v => `
+                <div class="col-md-4 col-6">
+                    <div class="card p-3 text-center shadow-sm border-0 h-100" style="border-top: 4px solid var(--accent);">
+                        <div class="mb-2" style="font-size: 30px;">👤</div>
+                        <h6 class="fw-bold mb-1 text-truncate">${v[1]}</h6>
+                        <span class="badge bg-light text-dark mb-3 border">غرفة ${v[2]}</span>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-xs btn-primary rounded-pill fw-bold" onclick="showQR(${v[0]}, '${v[1]}', '${v[3]||''}', '${v[2]}')">🎫 الكود</button>
+                            <button class="btn btn-xs btn-outline-success rounded-pill fw-bold" onclick="sendQRDirect(${v[0]}, '${v[1]}', '${v[3]||''}')">📱 إرسال</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    function showQR(id, name, phone, room) {
+        document.getElementById('qrcode').innerHTML = "";
+        document.getElementById('qrStudentName').innerText = name;
+        document.getElementById('qrStudentRoom').innerText = "غرفة: " + room;
+        currentQRData = { id, name, phone };
+        new QRCode(document.getElementById("qrcode"), { text: `STUDENT_ID:${id}`, width: 150, height: 150 });
+        renderIndividualChart(id);
+        new bootstrap.Modal(document.getElementById('qrModal')).show();
+    }
+
+    function renderIndividualChart(sid) {
+        const res = db.exec(`SELECT status, COUNT(*) FROM lecture_attendance WHERE s_id = ? GROUP BY status`, [sid]);
+        let stats = { 'حاضر': 0, 'غائب': 0, 'بعذر': 0 };
+        if (res.length) res[0].values.forEach(v => { stats[v[0]] = v[1]; });
+        
+        const ctx = document.getElementById('individualStudentChart').getContext('2d');
+        if (charts.individual) charts.individual.destroy();
+        charts.individual = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['حاضر', 'غائب', 'بعذر'],
+                datasets: [{ data: [stats['حاضر'], stats['غائب'], stats['بعذر']], backgroundColor: ['#27ae60', '#e74c3c', '#f1c40f'] }]
+            },
+            options: { maintainAspectRatio: false, cutout: '70%' }
+        });
+        document.getElementById('studentStatsSummary').innerHTML = `ح:${stats['حاضر']} | غ:${stats['غائب']} | ع:${stats['بعذر']}`;
+    }
+
+    // --- التصدير PDF و Excel ---
+    function exportToPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+        
+        // ملاحظة: دعم اللغة العربية في jsPDF يتطلب تحميل خطوط، هنا سنستخدم جدول بسيط
+        doc.text("Attendance Report", 105, 10, { align: 'center' });
+        
+        const rows = [];
+        const res = db.exec("SELECT s.name, s.room, a.date, a.prayer, a.status FROM attendance a JOIN students s ON a.s_id = s.id LIMIT 50");
+        if (res.length) {
+            res[0].values.forEach(v => rows.push(v));
+            doc.autoTable({
+                head: [['Name', 'Room', 'Date', 'Prayer', 'Status']],
+                body: rows,
+                startY: 20,
+                styles: { font: 'helvetica' }
+            });
+            doc.save("Report.pdf");
+        }
+    }
+
+    function exportToExcel() {
+        const rows = [["الاسم", "الغرفة", "التاريخ", "الصلاة", "الحالة"]];
+        const res = db.exec("SELECT s.name, s.room, a.date, a.prayer, a.status FROM attendance a JOIN students s ON a.s_id = s.id");
+        if (res.length) {
+            res[0].values.forEach(v => rows.push(v));
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "التقارير");
+            XLSX.writeFile(wb, "تقرير_المتابعة.xlsx");
+        }
+    }
+
+    // --- وظائف إضافية ---
+    function sendWhatsApp(phone, name, date) {
+        if (!phone) return alert("يرجى إضافة الرقم أولاً");
+        const msg = `*تقرير متابعة*\n👤 الطالب: ${name}\n📅 التاريخ: ${date}\n(يرجى مراجعة حالة الصلوات في التطبيق)`;
+        window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function copyToWhatsApp() {
+        let text = "📋 تقرير المتابعة اليومي\n\n";
+        document.querySelectorAll('.student-block').forEach(b => {
+            text += `👤 ${b.querySelector('.fw-bold').innerText}\n`;
+            b.querySelectorAll('.prayer-item').forEach(p => {
+                text += `  - ${p.innerText.replace('\n', ': ')}\n`;
+            });
+            text += "\n";
+        });
+        navigator.clipboard.writeText(text).then(() => alert("تم النسخ!"));
     }
 
     function exportBackup() {
-        const data = localStorage.getItem(DB_KEY);
-        const blob = new Blob([data], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
+        const blob = new Blob([localStorage.getItem(DB_KEY)], { type: "application/json" });
         const a = document.createElement('a');
-        a.href = url;
-        a.download = `backup_prayer_${new Date().toISOString().split('T')[0]}.json`;
+        a.href = URL.createObjectURL(blob);
+        a.download = `backup_${new Date().toISOString().split('T')[0]}.json`;
         a.click();
     }
 
     function importBackup(input) {
-        const file = input.files[0];
         const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const content = e.target.result;
-                JSON.parse(content); // التحقق من الصحة
-                localStorage.setItem(DB_KEY, content);
-                alert("تم استيراد البيانات بنجاح! سيتم إعادة تحميل الصفحة.");
-                location.reload();
-            } catch(err) {
-                alert("الملف غير صالح.");
-            }
+        reader.onload = (e) => {
+            localStorage.setItem(DB_KEY, e.target.result);
+            location.reload();
         };
-        reader.readAsText(file);
+        reader.readAsText(input.files[0]);
     }
 
-    // دالة تصدير الأسماء المطورة
     function exportStudents(format) {
-        const option = document.getElementById('exportOption').value;
-        const res = db.exec("SELECT name, room FROM students ORDER BY CAST(room AS INTEGER) ASC, name ASC");
-        
-        if (!res.length || !res[0].values.length) return alert("لا يوجد طلاب لتصديرهم");
-
+        const res = db.exec("SELECT name, room FROM students ORDER BY CAST(room AS INTEGER) ASC");
+        if (!res.length) return;
+        const rows = res[0].values;
         if (format === 'excel') {
-            let rows = [];
-            if (option === 'withRoom') {
-                rows.push(["الاسم الكامل", "رقم الغرفة"]);
-                res[0].values.forEach(v => rows.push([v[0], v[1]]));
-            } else {
-                rows.push(["الاسم الكامل"]);
-                res[0].values.forEach(v => rows.push([v[0]]));
-            }
-            
-            const ws = XLSX.utils.aoa_to_sheet(rows);
+            const ws = XLSX.utils.aoa_to_sheet([["الاسم", "الغرفة"], ...rows]);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "قائمة الطلاب");
-            XLSX.writeFile(wb, `قائمة_الطلاب_${new Date().toLocaleDateString('ar-SA')}.xlsx`);
+            XLSX.utils.book_append_sheet(wb, ws, "قائمة");
+            XLSX.writeFile(wb, "طلاب.xlsx");
         } else {
-            // تصدير وورد منسق بجدول
-            let tableHtml = `
-                <html dir="rtl" lang="ar">
-                <head><meta charset="utf-8">
-                <style>
-                    body { font-family: 'Arial', sans-serif; }
-                    .header { text-align: center; color: #2c3e50; margin-bottom: 20px; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; }
-                    table { border-collapse: collapse; width: 100%; }
-                    th, td { border: 1px solid #000; padding: 10px; text-align: right; }
-                    th { background-color: #f2f2f2; color: #2c3e50; font-weight: bold; }
-                    .footer { margin-top: 20px; font-size: 10px; text-align: center; color: #7f8c8d; }
-                </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <h1>قائمة أسماء الطلاب</h1>
-                        <p>تاريخ التصدير: ${new Date().toLocaleDateString('ar-SA')}</p>
-                    </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="width: 70%;">الاسم الكامل</th>
-                                ${option === 'withRoom' ? '<th style="width: 30%;">رقم الغرفة</th>' : ''}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${res[0].values.map(v => `
-                                <tr>
-                                    <td>${v[0]}</td>
-                                    ${option === 'withRoom' ? `<td>${v[1]}</td>` : ''}
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                    <div class="footer">تم إنشاء هذا الملف عبر نظام المتابعة المطور</div>
-                </body>
-                </html>
-            `;
-
-            const blob = new Blob(['\ufeff', tableHtml], { type: 'application/msword' });
-            const url = URL.createObjectURL(blob);
+            let html = `<html><body dir="rtl"><h2>قائمة الطلاب</h2><table border="1">${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table></body></html>`;
+            const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
             const a = document.createElement('a');
-            a.href = url;
-            a.download = `قائمة_الطلاب_${new Date().toLocaleDateString('ar-SA')}.doc`;
+            a.href = URL.createObjectURL(blob);
+            a.download = "طلاب.doc";
             a.click();
         }
     }
 
+    function sendQRDirect(id, name, phone) {
+        if (!phone) return alert("أضف الرقم أولاً");
+        const msg = `كود التحضير الخاص بك يا ${name} هو: (STUDENT_ID:${id})`;
+        window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function sendQRWhatsApp() {
+        sendQRDirect(currentQRData.id, currentQRData.name, currentQRData.phone);
+    }
+
+    function loadStudentList() {
+        // تحديث قائمة البحث
+    }
+
     init();
 </script>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
